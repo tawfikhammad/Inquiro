@@ -1,0 +1,4 @@
+customtkinter 
+PyMuPDF
+pydantic-settings
+python-dotenv
