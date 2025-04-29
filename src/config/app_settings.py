@@ -5,4 +5,7 @@ class AppSettings(BaseSettings):
     APP_VERSION: str
 
     class Config:
-        env_file = ".env"  
+        env_file = "src/.env"  
+
+def app_settings() -> AppSettings:
+    return AppSettings()
