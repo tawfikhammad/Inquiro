@@ -25,15 +25,12 @@ class PathUtils:
     
 
     def get_file_path(self, project_title: str, file_name: str) -> Path:
-        """Get path for a paper file"""
         project_dir, papers_dir, _ = self.get_project_dir(project_title=project_title)
         return papers_dir / file_name
     
     def get_summary_path(self, project_title: str, file_name: str) -> Path:
-        """Get path for a summary file"""
         project_dir, _, summaries_dir = self.get_project_dir(project_title=project_title)
         
-        # Ensure the filename ends with .md for summaries
         if not file_name.lower().endswith('.md'):
             file_name = os.path.splitext(file_name)[0] + '.md'
             
@@ -41,7 +38,6 @@ class PathUtils:
         
         
     def get_project_files(self, project_title: str):
-        """Get all files in a project directory"""
         _, papers_dir, summaries_dir = self.get_project_dir(project_title)
         
         paper_files = [f.name for f in papers_dir.glob('*') if f.is_file()]
