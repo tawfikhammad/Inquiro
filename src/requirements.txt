@@ -1,8 +1,0 @@
-customtkinter 
-PyMuPDF
-pydantic-settings
-python-dotenv
-nltk
-markdown
-tkinterhtml
-tkhtmlview
