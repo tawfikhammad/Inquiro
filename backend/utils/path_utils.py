@@ -29,11 +29,7 @@ class PathUtils:
         return papers_dir / file_name
     
     def get_summary_path(self, project_title: str, file_name: str) -> Path:
-        project_dir, _, summaries_dir = self.get_project_dir(project_title=project_title)
-        
-        if not file_name.lower().endswith('.md'):
-            file_name = os.path.splitext(file_name)[0] + '.md'
-            
+        project_dir, _, summaries_dir = self.get_project_dir(project_title=project_title)    
         return summaries_dir / file_name
         
         
