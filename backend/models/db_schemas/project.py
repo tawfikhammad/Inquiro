@@ -1,10 +1,12 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from bson.objectid import ObjectId
+from datetime import datetime
 
 class Project(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
     project_title: str = Field(..., min_length=1)
+    project_created_at: datetime = Field(default=datetime.utcnow)
 
     @validator('project_title')
     def project_id_validator(cls, v):
