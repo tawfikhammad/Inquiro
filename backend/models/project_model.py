@@ -41,4 +41,10 @@ class ProjectModel(BaseModel):
         async for document in cursor:
             projects.append(Project(**document))
         return projects
+    
+    async def get_project_by_id(self, project_id: str):
+        record = await self.collection.find_one({"_id": project_id})
+        if record is None:
+            return None
+        return Project(**record)
 
