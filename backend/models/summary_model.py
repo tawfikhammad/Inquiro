@@ -23,10 +23,10 @@ class SummaryModel(BaseModel):
         summary.id = res.inserted_id
         return summary
     
-    async def get_summary(self, summary_project_id: str, summary_name: str):
+    async def get_summary_by_project(self, summary_project_id: str, summary_id: str):
         record = await self.collection.find_one(
             {"summary_project_id": ObjectId(summary_project_id) if isinstance(summary_project_id, str) else summary_project_id,
-            "summary_name": summary_name})
+            "summary_id": summary_id})
         if record is None:
             return None
         return Summary(**record)
@@ -41,6 +41,8 @@ class SummaryModel(BaseModel):
         summaries = [Summary(**record) for record in records]
         return summaries
     
-    async def delete_summary(self, summary_id: str):
-        result = await self.collection.delete_one({"_id": ObjectId(summary_id)})
+    async def delete_summary_by_project(self, project_summary_id: str, summary_id: str):
+        result = await self.collection.delete_one(
+            {"summary_project_id": ObjectId(project_summary_id) if isinstance(project_summary_id, str) else project_summary_id,
+             "summary_id": summary_id})
         return result.deleted_count > 0
