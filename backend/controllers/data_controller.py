@@ -8,6 +8,7 @@ import re
 class DataController(BaseController):
     def __init__(self):
         super().__init__()
+        self.path_utils = PathUtils()
 
     def validfile(self, file: UploadFile):
         if file.content_type not in self.app_settings.ALLOWWED_FILE_TYPES:
@@ -19,22 +20,23 @@ class DataController(BaseController):
         return True, ResponseSignals.SUCCESS_UPLOAD.value
     
 
-    def file_path(self, project_title: str, filename: str):
-        clean_filename = self.clean_name(filename)
+    def paper_path(self, project_title: str, filename: str):
+        cleaned_filename = self.clean_name(filename)
+        paper_filename = f'{cleaned_filename}.pdf'
         
-        path_utils = PathUtils()
-        file_path = path_utils.get_file_path(project_title=project_title, file_name=clean_filename)
-        return file_path, clean_filename
+        file_path = self.path_utils.get_file_path(project_title=project_title, file_name=paper_filename)
+        return file_path, cleaned_filename
     
     def summary_path(self, project_title: str, filename: str):
-        clean_filename = self.clean_name(filename)
+        cleaned_filename = f'{self.clean_name(filename)}_summary'
+        summary_filename = f'{cleaned_filename}.md'
         
-        path_utils = PathUtils()
-        summary_path = path_utils.get_summary_path(project_title=project_title, file_name=clean_filename)
-        return summary_path, clean_filename
+        summary_path = self.path_utils.get_summary_path(project_title=project_title, file_name=summary_filename)
+        return summary_path, cleaned_filename
     
-    def clean_name(self, name: str):
+    def clean_name(self, filename: str):
 
         # Remove special chars
-        clean_name = re.sub(r"[^\w.]", "", name)
-        return clean_name
+        cleaned_filename = re.sub(r"[^\w.]", "", filename)
+        cleaned_filename = os.path.splitext(cleaned_filename)[0]
+        return cleaned_filename
