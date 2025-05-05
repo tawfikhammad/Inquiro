@@ -1,3 +1,3 @@
 from .project import Project
-from .asset import Asset
+from .paper import Paper
 from .summary import Summary

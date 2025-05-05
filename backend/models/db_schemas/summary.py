@@ -6,10 +6,11 @@ from datetime import datetime
 class Summary(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
     summary_project_id: ObjectId
-    summary_asset_id: ObjectId
+    summary_paper_id: ObjectId
     summary_name: str = Field(..., min_length=1)
     summary_type: str = Field(..., min_length=1)
     summary_size: int = Field(ge=0, default=None)
+    summary_created_at: datetime = Field(default=datetime.utcnow)
     
     class Config:
         arbitrary_types_allowed = True
