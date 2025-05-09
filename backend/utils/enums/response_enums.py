@@ -11,4 +11,6 @@ class ResponseSignals(Enum):
     FAILED_PROCESS = 'Processing Failed'
     NO_ATTACHED_FILES = 'No Attached Files'
     FILE_NOT_FOUND = 'No File Found With the ID'
+    SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
+    SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
 
