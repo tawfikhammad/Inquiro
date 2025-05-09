@@ -1,4 +1,5 @@
 from .base_controller import BaseController
+from AI.LLM import LLMProviderFactory, LLMModel
 from fastapi import UploadFile
 from utils.enums import ResponseSignals
 from utils import PathUtils, PDFUtils
@@ -9,13 +10,14 @@ class SummaryController(BaseController):
     def __init__(self):
         super().__init__()
         self.path_utils = PathUtils()
+        self.llm_provider = LLMProviderFactory(self.app_settings).create(LLMModel.COHERE.value)
     
-    def generate_summary(self, paper_path, paper_name):
+    async def generate_summary(self, paper_path, paper_name):
         extracted_text = PDFUtils.extract_text_from_pdf(paper_path)
-        
-        # In a real app, you'd use NLP here to summarize the extracted_text
-        # For now, create a simple placeholder summary
-        summary_content = f"""# Summary of {paper_name}"""
+
+        summary_content = await self.llm_provider.summarize(extracted_text)
+        if summary_content is None:
+            return ResponseSignals.SUMMARY_GENERATION_FAILED.value
         return summary_content
     
     def save_summary(self, summary_path, summary_content):        
