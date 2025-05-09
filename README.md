@@ -47,24 +47,6 @@ backend/
 
 ---
 
-## 🛠️ Setup Instructions
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/tawfikhammad/inquiro.git
-cd inquiro/backend
-```
-### 2. Create your .env file
-### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-### 4. Run the app
-```bash
-uvicorn main:app --reload
-```
----
-
 ## 🤝 Contributions
 PRs are welcome! If you want to contribute or report a bug, please open an issue or submit a pull request.
 
