@@ -3,6 +3,7 @@ from enum import Enum
 class LLMModel(Enum):
     OPENAI="openai"
     COHERE="cohere"
+    GEMINI="gemini"
 
 class OpenAIEnums(Enum):
     SYSTEM = "system"
