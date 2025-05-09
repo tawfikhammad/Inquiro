@@ -68,7 +68,4 @@ uvicorn main:app --reload
 ## 🤝 Contributions
 PRs are welcome! If you want to contribute or report a bug, please open an issue or submit a pull request.
 
-## 📜 License
-This project is licensed under the MIT License.
-
 # This Project is Under Active Developing 
