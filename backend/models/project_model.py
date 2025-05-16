@@ -47,4 +47,10 @@ class ProjectModel(BaseModel):
         if record is None:
             return None
         return Project(**record)
+    
+    async def delete_project(self, project_id: str):
+        result = await self.collection.delete_one({"_id": project_id})
+        if result.deleted_count == 0:
+            return None
+        return result.deleted_count
 
