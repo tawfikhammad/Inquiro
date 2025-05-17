@@ -2,8 +2,9 @@ from fastapi import APIRouter, UploadFile, File, Depends, status, Request, HTTPE
 from fastapi.responses import JSONResponse, FileResponse
 from config import app_settings, AppSettings
 from controllers import PaperController
-from models import ProjectModel, PaperModel
-from models.db_schemas import Paper
+from .schema import ProcessRequest
+from models import ProjectModel, PaperModel, ChunkModel
+from models.db_schemas import Paper, Chunk
 from utils.enums import ResponseSignals, AssetTypeEnums
 import aiofiles
 from pathlib import Path
@@ -24,6 +25,8 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     - Validates file type and size
     - Saves file to the project directory
     - Creates an paper record in the database
+    - Generates chunks from the file 
+    - saves chunks to the database
     """
     
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
@@ -48,6 +51,18 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
                             content={"message": ResponseSignals.FAILED_UPLOAD.value})
     
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+
+    paper = await paper_model.get_paper_by_name(
+        paper_project_id=project.id,
+        paper_name=paper_name)
+
+    if paper:
+        logger.info(f"Paper already exists: {paper.id}")
+        return JSONResponse(status_code=200,
+                            content={
+                                "message": ResponseSignals.PAPER_EXISTS.value,
+                                "paper_name": paper.id})
+
     paper = await paper_model.create_paper(
         paper(
             paper_project_id=project.id,
@@ -55,12 +70,39 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             paper_type=AssetTypeEnums.PDF.value,
             paper_size=os.path.getsize(paper_path)
         ))
+    
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
+    chunks = PaperController().get_chunks(
+        project_title=project.project_title,
+        paper_name=paper.paper_name,
+        chunk_size=100,
+        chunk_overlap=20
+    )
 
-    return JSONResponse(status_code=status.HTTP_201_CREATED,
-                         content={
-                            "message": ResponseSignals.SUCCESS_UPLOAD.value,
-                            "file_id": paper.paper_name
-                            })
+    if not chunks:
+        logger.warning(f"No chunks generated for paper {paper.id}.")
+        return JSONResponse(status_code=204, content={"message": ResponseSignals.FAILED_PROCESS_FILE.value})
+    
+    inserted_chunks = [
+        Chunk(
+            chunk_project_id=project.id,
+            chunk_paper_id=paper.id,
+            chunk_text=chunk.page_content,
+            chunk_metadata=chunk.metadata,
+            chunk_id=i
+        ) for i, chunk in enumerate(chunks)
+    ]
+
+    no_chunks = await chunk_model.insert_chunks(inserted_chunks)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": ResponseSignals.SUCCESS_UPLOAD.value,
+            "paper_id": paper.id,
+            "no_chunks": no_chunks
+        }
+    )
 
 # List all papers by project
 @papers_router.get("/")
