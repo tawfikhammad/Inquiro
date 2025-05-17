@@ -23,10 +23,18 @@ class PaperModel(BaseModel):
         paper.id = res.inserted_id
         return paper
     
-    async def get_paper_by_project(self, paper_project_id: str, paper_id: str):
+    async def get_paper_by_id(self, paper_project_id: str, paper_id: str):
         record = await self.collection.find_one(
             {"paper_project_id": ObjectId(paper_project_id) if isinstance(paper_project_id, str) else paper_project_id,
             "paper_id": paper_id})
+        if record is None:
+            return None
+        return Paper(**record)
+    
+    async def get_paper_by_name(self, paper_project_id: str, paper_name: str):
+        record = await self.collection.find_one(
+            {"paper_project_id": ObjectId(paper_project_id) if isinstance(paper_project_id, str) else paper_project_id,
+            "paper_name": paper_name})
         if record is None:
             return None
         return Paper(**record)
