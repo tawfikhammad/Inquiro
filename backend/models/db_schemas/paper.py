@@ -25,5 +25,7 @@ class Paper(BaseModel):
             {
                 "key": [("paper_name", 1), ("paper_project_id", 1)],
                 "name": "paper_project_id_name_index_1",
-                "unique": True}
+                "unique": True
+            }
+            
         ]
