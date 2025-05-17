@@ -1,4 +1,4 @@
-import pymupdf 
+from langchain_community.document_loaders import PyMuPDFLoader
 import io
 import logging
 
@@ -6,15 +6,12 @@ logger = logging.getLogger('unicorn.errors')
 
 class PDFUtils:
     @staticmethod
-    def extract_text_from_pdf(file_path):
+    def get_pdf_content(file_path):
 
         try:
-            doc = pymupdf.open(file_path) 
-            text = ""
-            for page in doc: 
-                text += page.get_text() 
-            return text
+            loader = PyMuPDFLoader(file_path)
+            return loader.load()
         
         except Exception as e:
             logger.error(f"Error extracting text from PDF: {e}")
-            return "Error extracting text from PDF"
+            return None
