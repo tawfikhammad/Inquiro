@@ -9,8 +9,9 @@ class ResponseSignals(Enum):
     SUCCESS_PROCESS_FILE = 'File Processed Successfully'
     SUCCESS_PROCESS = 'Processing Successful'
     FAILED_PROCESS = 'Processing Failed'
-    NO_ATTACHED_FILES = 'No Attached Files'
+    NO_ATTACHED_FILE = 'No Attached File'
     FILE_NOT_FOUND = 'No File Found With the ID'
     SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
     SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
+    PAPER_EXISTS = 'Paper Already Exists'
 
