@@ -1,1 +1,1 @@
-from .VDBFactory import VDBFactory
+from .VDBFactory import VDBProviderFactory
