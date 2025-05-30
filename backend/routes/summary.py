@@ -26,7 +26,7 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
         raise HTTPException(status_code=404, detail="Project not found.")
 
     # Check if the paper exists
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found.")
     
@@ -34,12 +34,15 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
         project_title=project.project_title,
         filename=paper.paper_name)
     
-    summary_path, summary_name = SummaryController().summary_path(
+    summary_controller = SummaryController(
+        summary_client=request.app.summary_client)
+    
+    summary_path, summary_name = summary_controller.summary_path(
         project_title=project.project_title, 
         filename=paper.paper_name)
     
-    summary_content = SummaryController().generate_summary(paper_path, paper_name)
-    SummaryController().save_summary(summary_path, summary_content)
+    summary_content = summary_controller.generate_summary(paper_path, paper_name)
+    summary_controller.save_summary(summary_path, summary_content)
 
     summary = {
         "summary_project_id": project.id,
@@ -96,7 +99,7 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
         
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found.")
     
@@ -129,14 +132,15 @@ async def serve_summary_file(request: Request, project_id: str, paper_id: str, s
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     summary = await summary_model.get_summary_by_project(summary_project_id=project_id, summary_id=summary_id)
 
     # if summary exists in db
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found.")
 
-    summary_path, summary_name = SummaryController().summary_path(
+    summary_controller = SummaryController(request.app.summary_client)
+    summary_path, summary_name = summary_controller.summary_path(
         project_title=project.project_title, 
         paper_name=paper.paper_name
     )
@@ -170,7 +174,7 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
         
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found.")
         
