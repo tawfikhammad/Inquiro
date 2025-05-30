@@ -7,15 +7,16 @@ import os
 import re
 
 class SummaryController(BaseController):
-    def __init__(self):
+    def __init__(self, summary_client):
         super().__init__()
         self.path_utils = PathUtils()
-        self.llm_provider = LLMProviderFactory(self.app_settings).create(LLMModel.COHERE.value)
+        self.summary_client = summary_client
     
     async def generate_summary(self, paper_path, paper_name):
-        extracted_text = PDFUtils.extract_text_from_pdf(paper_path)
-
-        summary_content = await self.llm_provider.summarize(extracted_text)
+        paper_content = PDFUtils.get_pdf_content(paper_path)
+        extracted_text = [reg.page_content for reg in paper_content]
+        
+        summary_content = await self.summary_client.summarize(extracted_text)
         if summary_content is None:
             return ResponseSignals.SUMMARY_GENERATION_FAILED.value
         return summary_content
