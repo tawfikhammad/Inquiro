@@ -14,4 +14,11 @@ class ResponseSignals(Enum):
     SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
     SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
     PAPER_EXISTS = 'Paper Already Exists'
-
+    PROJECT_NOT_FOUND_ERROR = 'Project Not Found'
+    INSERT_INTO_VECTORDB_ERROR = 'Failed to Insert Into Vector DB'
+    INSERT_INTO_VECTORDB_SUCCESS = 'Inserted Into Vector DB Successfully'
+    VECTORDB_COLLECTION_RETRIEVED = 'Vector DB Collection Retrieved Successfully'
+    VECTORDB_SEARCH_ERROR = 'Failed to Search Vector DB'
+    VECTORDB_SEARCH_SUCCESS = 'Vector DB Search Successful'
+    RAG_ANSWER_ERROR = 'Failed to Generate Answer'
+    RAG_ANSWER_SUCCESS = 'Answer Generated Successfully'
