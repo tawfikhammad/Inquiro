@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from .routes import paper, projects, rag, summary
-from .config import AppSettings, app_settings
+from routes import welcome, paper, projects, rag, summary
+from config import AppSettings, app_settings
 
 app = FastAPI(
     title="Inquiro",
@@ -32,43 +32,34 @@ async def startup_db():
 
     # generation client
     app.generation_client = llm_provider_factory.create(provider=settings.GENERATION_BACKEND)
-    app.generation_client.set_generation_model(model_id = settings.GENERATION_MODEL_ID)
+    app.generation_client.set_generation_model(generation_model_id = settings.GENERATION_MODEL_ID)
 
     # embedding client
     app.embedding_client = llm_provider_factory.create(provider=settings.EMBEDDING_BACKEND)
-    app.embedding_client.set_embedding_model(model_id=settings.EMBEDDING_MODEL_ID,
+    app.embedding_client.set_embedding_model(embedding_model_id=settings.EMBEDDING_MODEL_ID,
                                              embedding_size=settings.EMBEDDING_MODEL_SIZE)
     
     # summary client
     app.summary_client = llm_provider_factory.create(provider=settings.SUMMARY_BACKEND)
-    app.summary_client.set_summary_model(model_id=settings.SUMMARY_MODEL_ID)
+    app.summary_client.set_summary_model(summary_model_id=settings.SUMMARY_MODEL_ID)
     
     # vector db client
     app.vectordb_client = vectordb_provider_factory.create(provider=settings.VECTOR_DB_BACKEND)
-    app.vectordb_client.connect()
+    await app.vectordb_client.connect()
 
 @app.on_event("shutdown")
 async def shutdown_db():
     app.mongodb_conn.close()
-    app.vdb_client.disconnect()
+    await app.vectordb_client.disconnect()
 
 
 #app.include_router(auth.router)
+app.include_router(welcome.welcome_router, prefix="", tags=["welcome"])
 app.include_router(projects.projects_router, prefix="/projects", tags=["projects"])
 app.include_router(paper.papers_router, prefix="/projects/{project_id}/papers", tags=["papers"])
 app.include_router(summary.summaries_router, prefix="/projects/{project_id}/papers/{paper_id}/summaries", tags=["summaries"])
-app.include_router(rag.rag_router, prefix="projects/{project_id}/papers/{paper_id}/chat", tags=["chat"])
+app.include_router(rag.rag_router, prefix="/projects/{project_id}/papers/{paper_id}/chat", tags=["chat"])
 
-@app.get("/")
-async def root(settings: AppSettings = Depends(app_settings)):
-    return {
-        "app_name": settings.APP_NAME,
-        "version": settings.APP_VERSION,
-    }
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
 
 if __name__ == "__main__":
     import uvicorn
