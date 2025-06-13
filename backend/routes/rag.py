@@ -1,15 +1,13 @@
 from fastapi import APIRouter, Request, Body, status
 from fastapi.responses import JSONResponse
-from backend.controllers import RAGController
-from backend.models import ProjectModel, ChunkModel
+from controllers import RAGController
+from models import ProjectModel, ChunkModel
 from .schema.rag import PushRequest, SearchRequest
 from utils.enums import ResponseSignals
 import logging
 logger = logging.getLogger('uvicorn.error')
 
 rag_router = APIRouter()
-rag_controller = RAGController()
-
 
 @rag_router.post("/index/push/")
 async def index_project(request: Request, project_id: str, push_request: PushRequest):
@@ -31,6 +29,7 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
         embedding_client=request.app.embedding_client,
+        template_parser=request.app.template_parser,
     )
 
     has_records = True
@@ -84,6 +83,7 @@ async def get_project_index_info(request: Request, project_id: str):
         vectordb_client=request.app.vectordb_client,
         generation_client=request.app.generation_client,
         embedding_client=request.app.embedding_client,
+        template_parser=request.app.template_parser,
     )
 
     collection_info = rag_controller.get_vector_db_collection_info(project=project)
@@ -132,11 +132,11 @@ async def search_index(request: Request, project_id: str, search_request: Search
 @rag_router.post("/index/answer")
 async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
     
-    project_model = await ProjectModel.create_instance(
+    project_model = await ProjectModel.get_instance(
         db_client=request.app.db_client
     )
 
-    project = await project_model.get_project_or_create_one(
+    project = await project_model.get_or_create_project(
         project_id=project_id
     )
 
