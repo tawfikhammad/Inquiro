@@ -2,7 +2,6 @@ from fastapi import APIRouter, File, Depends, status, Request, HTTPException, Bo
 from fastapi.responses import JSONResponse
 from config import app_settings, AppSettings
 from models import ProjectModel, PaperModel, SummaryModel
-from models.db_schemas import Asset
 from .schema import ProjectRequest
 from utils.enums import ResponseSignals, AssetTypeEnums
 import os
