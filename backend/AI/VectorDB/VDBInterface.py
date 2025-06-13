@@ -18,7 +18,7 @@ class VDBInterface(ABC):
         pass
 
     @abstractmethod
-    def is_collection(self, collection_name):
+    def is_collection_exist(self, collection_name):
         """Check if a collection exists in the VDB."""
         pass
 
