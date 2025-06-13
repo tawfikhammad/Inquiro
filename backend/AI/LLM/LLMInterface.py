@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 class LLMInterface(ABC):
 
     @abstractmethod
-    async def set_genration_model(self, genration_model_id: str ):
+    async def set_generation_model(self, generation_model_id: str ):
         pass
 
     @abstractmethod
