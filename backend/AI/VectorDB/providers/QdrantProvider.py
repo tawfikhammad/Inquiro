@@ -16,16 +16,16 @@ class QdrantProvider(VDBInterface):
         elif distance_metric == "dot":
             self.distance_metric = models.Distance.DOT
 
-    def connect(self):
+    async def connect(self):
         self.client = QdrantClient(path=self.db_path)
         logging.info("Connected to Qdrant database.")
 
-    def disconnect(self):
+    async def disconnect(self):
         if self.client:
             self.client.close()
             logging.info("Disconnected from Qdrant database.")
 
-    def create_collection(self, collection_name, str, embedding_size: int):
+    async def create_collection(self, collection_name: str, embedding_size: int):
         if not self.client.collection_exists(collection_name):
             self.client.create_collection(
                 collection_name=collection_name,
@@ -36,11 +36,11 @@ class QdrantProvider(VDBInterface):
         else:
             logging.warning(f"Collection '{collection_name}' already exists.")
 
-    def is_collection_exist(self, collection_name) -> bool:
+    async def is_collection_exist(self, collection_name) -> bool:
         return self.client.collection_exists(collection_name)
     
     
-    def delete_collection(self, collection_name):
+    async def delete_collection(self, collection_name):
         if self.client.collection_exists(collection_name):
             self.client.delete_collection(collection_name=collection_name)
             logging.info(f"Collection '{collection_name}' deleted.")
@@ -48,11 +48,11 @@ class QdrantProvider(VDBInterface):
             logging.warning(f"Collection '{collection_name}' does not exist.")
 
 
-    def get_all_collections(self) -> List: 
+    async def get_all_collections(self) -> List: 
         return self.client.get_collections()
     
          
-    def get_collection_info(self, collection_name):
+    async def get_collection_info(self, collection_name):
         if self.client.collection_exists(collection_name):
             return self.client.get_collection(collection_name=collection_name)
         else:
@@ -60,7 +60,7 @@ class QdrantProvider(VDBInterface):
             return None
         
         
-    def insert_one(self, collection_name:str, vector:list,
+    async def insert_one(self, collection_name:str, vector:list,
                 text:str, metadata:dict = None, record_id:int = None):
         
         if self.client.collection_exists(collection_name):
@@ -82,9 +82,8 @@ class QdrantProvider(VDBInterface):
         else:
             logging.warning(f"Collection '{collection_name}' does not exist. Cannot insert document.")
 
-        
 
-    def insert_many(self, collection_name:str, vectors:list,
+    async def insert_many(self, collection_name:str, vectors:list,
                 texts:list, metadata:list = None, record_ids:list = None, batch_size:int = 50):
         
         if not self.client.collection_exists(collection_name):
@@ -126,8 +125,7 @@ class QdrantProvider(VDBInterface):
             return False
         
 
-    
-    def search(self, collection_name:str, query_vector:list, top_k:int = 5):
+    async def search(self, collection_name:str, query_vector:list, top_k:int = 5):
         
         try:
             search_result = self.client.search(
