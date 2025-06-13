@@ -25,14 +25,14 @@ class CoHereProvider(LLMInterface):
 
         self.logger = logging.getLogger(__name__)
 
-    async def set_generation_model(self, model_id: str):
+    def set_generation_model(self, model_id: str):
         self.generation_model_id = model_id
 
-    async def set_embedding_model(self, model_id: str, embedding_size: int):
+    def set_embedding_model(self, model_id: str, embedding_size: int):
         self.embedding_model_id = model_id
         self.embedding_size = embedding_size
 
-    async def set_summary_model(self, summary_model_id: str):
+    def set_summary_model(self, summary_model_id: str):
         self.summary_model_id = summary_model_id
 
     def process_text(self, text: str):
