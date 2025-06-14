@@ -4,7 +4,7 @@ from config import app_settings, AppSettings
 from controllers import PaperController
 from .schema import ProcessRequest
 from models import ProjectModel, PaperModel, ChunkModel
-from models.db_schemas import Paper, Chunk
+from models.db_schemas import Paper, Project, Chunk
 from utils.enums import ResponseSignals, AssetTypeEnums
 import aiofiles
 from pathlib import Path
@@ -13,6 +13,13 @@ import os
 import logging
 logger = logging.getLogger('unicorn.errors')
 
+def _serialize_paper(paper):
+    paper_dict = paper.dict(by_alias=True, exclude_unset=True)
+    if "_id" in paper_dict and paper_dict["_id"]:
+        paper_dict["_id"] = str(paper_dict["_id"])
+    if "paper_project_id" in paper_dict and paper_dict["paper_project_id"]:
+        paper_dict["paper_project_id"] = str(paper_dict["paper_project_id"])
+    return paper_dict
 
 papers_router = APIRouter()
 
@@ -53,7 +60,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
 
     paper = await paper_model.get_paper_by_name(
-        paper_project_id=project.id,
+        paper_project_id=project_id,
         paper_name=paper_name)
 
     if paper:
@@ -61,10 +68,10 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         return JSONResponse(status_code=200,
                             content={
                                 "message": ResponseSignals.PAPER_EXISTS.value,
-                                "paper_name": paper.id})
+                                "paper": _serialize_paper(paper)})
 
     paper = await paper_model.create_paper(
-        paper(
+        Paper(
             paper_project_id=project.id,
             paper_name=paper_name,
             paper_type=AssetTypeEnums.PDF.value,
@@ -99,7 +106,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         status_code=200,
         content={
             "message": ResponseSignals.SUCCESS_UPLOAD.value,
-            "paper_id": paper.id,
+            "paper_id": _serialize_paper(paper),
             "no_chunks": no_chunks
         }
     )
@@ -112,13 +119,14 @@ async def list_papers(request: Request, project_id: str):
 
     return JSONResponse(
         status_code=200,
-        content=[paper.dict(by_alias=True, exclude_unset=True) for paper in papers])
+        content=[_serialize_paper(paper) for paper in papers]
+    )
 
 # Get paper details by ID
 @papers_router.get("/{paper_id}")
 async def get_paper(request: Request, project_id: str, paper_id: str):
     paper_model = await PaperModel.get_instance(db_client= request.app.mongodb_client)
-    paper = await paper_model.get_paper_by_project(paper_project_id= project_id, paper_id= paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id= project_id, paper_id= paper_id)
 
     if not paper:
         logger.error(f"Error retrieving paper: {paper_id}")
@@ -126,7 +134,8 @@ async def get_paper(request: Request, project_id: str, paper_id: str):
 
     return JSONResponse(
         status_code=200,
-        content=paper.dict(by_alias=True, exclude_unset=True))
+        content=_serialize_paper(paper)
+    )
 
 # Delete a paper
 @papers_router.delete("/{paper_id}")
@@ -139,7 +148,7 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
         logger.error(f"Error retrieving project: {project_id}")
         raise HTTPException(status_code=404, detail="Project not found.")
     
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         logger.error(f"Error retrieving paper: {paper_id}")
         raise HTTPException(status_code=404, detail="Paper not found.")
@@ -172,12 +181,12 @@ async def serve_pdf_file(request: Request, project_id: str, paper_id: str):
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
-    paper = await paper_model.get_paper_by_project(paper_project_id=project_id, paper_id=paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         logger.error(f"Error retrieving paper: {paper_id}")
         raise HTTPException(status_code=404, detail="Paper not found.")
 
-    paper_path, paper_name = PaperController().paper_path(project_title=project.project_title, filename=paper.paper_name)
+    paper_path, paper_name = PaperController().paper_path(project_title=project.project_title, paper_name=paper.paper_name)
     if not Path(paper_path):
         raise HTTPException(status_code=404, detail=ResponseSignals.FILE_NOT_FOUND.value)
     
