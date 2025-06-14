@@ -10,6 +10,13 @@ import os
 import logging
 logger = logging.getLogger('unicorn.errors')
 
+def _serialize_project(project):
+    """Helper function to serialize a single project"""
+    project_dict = project.dict(by_alias=True, exclude_unset=True)
+    if "_id" in project_dict and project_dict["_id"]:
+        project_dict["_id"] = str(project_dict["_id"])
+    return project_dict
+
 
 projects_router = APIRouter()
 
@@ -18,22 +25,23 @@ projects_router = APIRouter()
 async def list_projects(request: Request, app_settings: AppSettings = Depends(app_settings)):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     projects = await project_model.get_all_projects()
+    serialized_projects = [_serialize_project(project) for project in projects]
     
     return JSONResponse(
         status_code=200,
-        content=projects
+        content=serialized_projects
     )
 
 # Create a new project.
 @projects_router.post("/create")
 async def create(request: Request, project_request: ProjectRequest):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
-    project = Project(project_title=project_request.project_title)
-    created_project  = await project_model.create_project(project=project)
-    
+    created_project  = await project_model.create_project(project_title=project_request.project_title)
+    serialized_project = _serialize_project(created_project)
+
     return JSONResponse(
         status_code=201,
-        content=created_project
+        content=serialized_project
     )
 
 #Get project details by ID.
@@ -41,13 +49,14 @@ async def create(request: Request, project_request: ProjectRequest):
 async def get_project(request: Request, project_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
-    
     if not project:
         raise HTTPException(status_code=404, detail="Project not found.")
     
+    serlized_project = _serialize_project(project)
+
     return JSONResponse(
         status_code=200,
-        content=project
+        content=serlized_project
     )
 
 #delete all projects.
