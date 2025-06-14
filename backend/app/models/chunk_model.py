@@ -17,7 +17,7 @@ class ChunkModel(BaseModel):
         return instance
     
     async def ensure_indexes(self):
-        await self.create_indexes(self.collection, Project.get_indexes())
+        await self.create_indexes(self.collection, Chunk.get_indexes())
 
     async def create_chunk(self, chunk: Chunk):
         res = await self.collection.insert_one(chunk.dict(by_alias=True, exclude_unset=True))
