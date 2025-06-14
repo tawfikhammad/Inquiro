@@ -9,7 +9,7 @@ class Paper(BaseModel):
     paper_name: str = Field(..., min_length=1)
     paper_type: str = Field(..., min_length=1)
     paper_size: int = Field(ge=0, default=None)
-    paper_created_at: datetime = Field(default=datetime.utcnow)
+    paper_created_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Config:
         arbitrary_types_allowed = True
