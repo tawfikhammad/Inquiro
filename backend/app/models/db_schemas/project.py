@@ -6,7 +6,7 @@ from datetime import datetime
 class Project(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
     project_title: str = Field(..., min_length=1)
-    project_created_at: datetime = Field(default=datetime.utcnow)
+    project_created_at: datetime = Field(default_factory=datetime.utcnow)
 
     @validator('project_title')
     def project_id_validator(cls, v):
@@ -16,7 +16,11 @@ class Project(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
-
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda v: v.isoformat()
+        }
+        
     @classmethod
     def get_indexes(cls):
         return [
