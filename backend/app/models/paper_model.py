@@ -26,7 +26,7 @@ class PaperModel(BaseModel):
     async def get_paper_by_id(self, paper_project_id: str, paper_id: str):
         record = await self.collection.find_one(
             {"paper_project_id": ObjectId(paper_project_id) if isinstance(paper_project_id, str) else paper_project_id,
-            "paper_id": paper_id})
+            "_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id})
         if record is None:
             return None
         return Paper(**record)
@@ -52,5 +52,5 @@ class PaperModel(BaseModel):
     async def delete_paper_by_project(self, paper_project_id:str, paper_id: str):
         result = await self.collection.delete_one(
             {"paper_project_id": ObjectId(paper_project_id) if isinstance(paper_project_id, str) else paper_project_id,
-             "paper_id": paper_id})
+             "_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id})
         return result.deleted_count > 0
