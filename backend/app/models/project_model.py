@@ -17,17 +17,11 @@ class ProjectModel(BaseModel):
     async def ensure_indexes(self):
         await self.create_indexes(self.collection, Project.get_indexes())
 
-    def _serialize_project(self, project):
-        """Helper function to serialize a single project"""
-        project_dict = project.dict(by_alias=True, exclude_unset=True)
-        if "_id" in project_dict and project_dict["_id"]:
-            project_dict["_id"] = str(project_dict["_id"])
-        return project_dict
-
-    async def create_project(self, project: Project):
+    async def create_project(self, project_title: str):
+        project = Project(project_title=project_title)
         res= await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True))
         project.id = res.inserted_id
-        return self._serialize_project(project)
+        return project
     
     async def get_or_create_project(self, project_title: str):
         """
@@ -38,7 +32,7 @@ class ProjectModel(BaseModel):
             project = Project(project_title=project_title)
             project = await self.create_project(project)
             return project
-        return self._serialize_project(Project(**record))
+        return Project(**record)
     
     async def get_all_projects(self, page: int=0, limit: int=10):
         """
@@ -47,14 +41,14 @@ class ProjectModel(BaseModel):
         cursor = self.collection.find().skip(page * limit).limit(limit)
         projects = []
         async for document in cursor:
-            projects.append(self._serialize_project(Project(**document)))
+            projects.append(Project(**document))
         return projects
     
     async def get_project_by_id(self, project_id: str):
         record = await self.collection.find_one({"_id": ObjectId(project_id)})
         if record is None:
             return None
-        return self._serialize_project(Project(**record))
+        return Project(**record)
     
     async def delete_all_projects(self):
         """Delete all projects from the collection"""
