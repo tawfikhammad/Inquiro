@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, Depends, status, Request, HTTPException, Bo
 from fastapi.responses import JSONResponse
 from config import app_settings, AppSettings
 from models import ProjectModel, PaperModel, SummaryModel
+from models.db_schemas import Project, Paper, Summary
 from .schema import ProjectRequest
 from utils.enums import ResponseSignals, AssetTypeEnums
 import os
@@ -20,18 +21,19 @@ async def list_projects(request: Request, app_settings: AppSettings = Depends(ap
     
     return JSONResponse(
         status_code=200,
-        content=[project.dict(by_alias=True, exclude_unset=True) for project in projects]
+        content=projects
     )
 
 # Create a new project.
 @projects_router.post("/create")
-async def create_project(request: Request, project_request: ProjectRequest):
+async def create(request: Request, project_request: ProjectRequest):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
-    project = await project_model.create_project(project_title=project_request.project_title)
+    project = Project(project_title=project_request.project_title)
+    created_project  = await project_model.create_project(project=project)
     
     return JSONResponse(
         status_code=201,
-        content=project.dict(by_alias=True, exclude_unset=True)
+        content=created_project
     )
 
 #Get project details by ID.
@@ -45,9 +47,22 @@ async def get_project(request: Request, project_id: str):
     
     return JSONResponse(
         status_code=200,
-        content=project.dict(by_alias=True, exclude_unset=True)
+        content=project
     )
 
+#delete all projects.
+@projects_router.delete("/")
+async def delete_all(request: Request):
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+    deleted_count = await project_model.delete_all_projects()
+    
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": f"All projects deleted successfully.",
+            "deleted_count": deleted_count
+        }
+    )
 # Delete a project.
 @projects_router.delete("/{project_id}")
 async def delete_project(request: Request, project_id: str):
