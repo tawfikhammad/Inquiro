@@ -39,7 +39,6 @@ class QdrantProvider(VDBInterface):
     async def is_collection_exist(self, collection_name) -> bool:
         return self.client.collection_exists(collection_name)
     
-    
     async def delete_collection(self, collection_name):
         if self.client.collection_exists(collection_name):
             self.client.delete_collection(collection_name=collection_name)
@@ -47,10 +46,8 @@ class QdrantProvider(VDBInterface):
         else:
             logging.warning(f"Collection '{collection_name}' does not exist.")
 
-
     async def get_all_collections(self) -> List: 
         return self.client.get_collections()
-    
          
     async def get_collection_info(self, collection_name):
         if self.client.collection_exists(collection_name):
@@ -58,7 +55,6 @@ class QdrantProvider(VDBInterface):
         else:
             logging.warning(f"Collection '{collection_name}' does not exist.")
             return None
-        
         
     async def insert_one(self, collection_name:str, vector:list,
                 text:str, metadata:dict = None, record_id:int = None):
@@ -81,7 +77,6 @@ class QdrantProvider(VDBInterface):
                 return False
         else:
             logging.warning(f"Collection '{collection_name}' does not exist. Cannot insert document.")
-
 
     async def insert_many(self, collection_name:str, vectors:list,
                 texts:list, metadata:list = None, record_ids:list = None, batch_size:int = 50):
@@ -124,7 +119,6 @@ class QdrantProvider(VDBInterface):
             logging.error(f"Error inserting into collection '{collection_name}': {e}")
             return False
         
-
     async def search(self, collection_name:str, query_vector:list, top_k:int = 5):
         
         try:

@@ -38,11 +38,10 @@ class RAGController(BaseController):
         collection_name = self.create_collection_name(project_id=project.id)
 
         # step2: manage items
-        texts = [ c.chunk_text for c in chunks ]
-        metadata = [ c.chunk_metadata for c in  chunks]
+        texts = [c.chunk_text for c in chunks]
+        metadata = [c.chunk_metadata for c in chunks]
         vectors = [
-            self.embedding_client.embed(text=text, 
-                                             document_type=DocumentTypeEnum.DOCUMENT.value)
+            self.embedding_client.embed(text=text, document_type=DocumentTypeEnum.DOCUMENT.value)
             for text in texts
         ]
 
@@ -70,8 +69,7 @@ class RAGController(BaseController):
         collection_name = self.create_collection_name(project_id=project.id)
 
         # step2: get text embedding vector
-        vector = self.embedding_client.embed(text=text, 
-                                                 document_type=DocumentTypeEnum.QUERY.value)
+        vector = self.embedding_client.embed(text=text, document_type=DocumentTypeEnum.QUERY.value)
 
         if not vector or len(vector) == 0:
             return False
