@@ -38,9 +38,17 @@ class ChunkModel(BaseModel):
         return len(chunks)
     
     
-    async def get_poject_chunks(self, project_id: ObjectId, page_no: int=1, page_size: int=50):
+    async def get_project_chunks(self, project_id: str, page_no: int=1, page_size: int=50):
         records = await self.collection.find({
-                    "chunk_project_id": project_id
+                    "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id
+                }).skip((page_no-1) * page_size).limit(page_size).to_list(length=None)
+
+        return [Chunk(**record)for record in records]
+    
+    
+    async def get_paper_chunks(self, paper_id: str, page_no: int=1, page_size: int=50):
+        records = await self.collection.find({
+                    "chunk_paper_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id
                 }).skip(
                     (page_no-1) * page_size
                 ).limit(page_size).to_list(length=None)
@@ -48,23 +56,16 @@ class ChunkModel(BaseModel):
         return [Chunk(**record)for record in records]
     
     
-    async def get_paper_chunks(self, paper_id: ObjectId, page_no: int=1, page_size: int=50):
-        records = await self.collection.find({
-                    "chunk_paper_id": paper_id
-                }).skip(
-                    (page_no-1) * page_size
-                ).limit(page_size).to_list(length=None)
-
-        return [Chunk(**record)for record in records]
-    
-    
-    async def del_chunks_by_projectID(self, project_id: ObjectId):
-        result = await self.collection.delete_many({"chunk_project_id": project_id})
+    async def del_chunks_by_projectID(self, project_id: str):
+        result = await self.collection.delete_many({
+            "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id})
         return result.deleted_count
     
     
-    async def del_chunks_by_paperID(self, paper_id: ObjectId):
-        result = await self.collection.delete_many({"chunk_paper_id": paper_id})
+    async def del_chunks_by_paperID(self, project_id: ObjectId, paper_id: ObjectId):
+        result = await self.collection.delete_many({
+            "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id,
+            "chunk_paper_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id})
         return result.deleted_count
     
 
