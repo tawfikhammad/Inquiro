@@ -15,10 +15,8 @@ logger = logging.getLogger('unicorn.errors')
 
 def _serialize_paper(paper):
     paper_dict = paper.dict(by_alias=True, exclude_unset=True)
-    if "_id" in paper_dict and paper_dict["_id"]:
-        paper_dict["_id"] = str(paper_dict["_id"])
-    if "paper_project_id" in paper_dict and paper_dict["paper_project_id"]:
-        paper_dict["paper_project_id"] = str(paper_dict["paper_project_id"])
+    paper_dict["_id"] = str(paper_dict["_id"])
+    paper_dict["paper_project_id"] = str(paper_dict["paper_project_id"])
     return paper_dict
 
 papers_router = APIRouter()
@@ -142,6 +140,7 @@ async def get_paper(request: Request, project_id: str, paper_id: str):
 async def delete_paper(request: Request, project_id: str, paper_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
@@ -168,6 +167,11 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
     if not result:
         logger.error(f"Error deleting paper: {paper_id}")
         raise HTTPException(status_code=404, detail="Paper not found.")
+
+    # Delete all chunks associated with the paper
+    del_chunks_no = await chunk_model.del_chunks_by_paperID(project_id=project_id, paper_id=paper_id)
+    if del_chunks_no:
+        logger.info(f"Deleted {del_chunks_no} chunks for paper: {paper_id}")
 
     return JSONResponse(
         status_code=200,

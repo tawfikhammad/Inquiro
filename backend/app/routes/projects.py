@@ -11,10 +11,8 @@ import logging
 logger = logging.getLogger('unicorn.errors')
 
 def _serialize_project(project):
-    """Helper function to serialize a single project"""
     project_dict = project.dict(by_alias=True, exclude_unset=True)
-    if "_id" in project_dict and project_dict["_id"]:
-        project_dict["_id"] = str(project_dict["_id"])
+    project_dict["_id"] = str(project_dict["_id"])
     return project_dict
 
 
