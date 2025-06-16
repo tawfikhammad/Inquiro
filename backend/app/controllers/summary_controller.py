@@ -3,8 +3,13 @@ from AI.LLM import LLMProviderFactory, LLMModel
 from fastapi import UploadFile
 from utils.enums import ResponseSignals
 from utils import PathUtils, PDFUtils
+from fastapi import HTTPException
+import aiofiles
 import os
 import re
+
+import logging
+logger = logging.getLogger('unicorn.errors')
 
 class SummaryController(BaseController):
     def __init__(self, summary_client):
@@ -14,18 +19,23 @@ class SummaryController(BaseController):
     
     async def generate_summary(self, paper_path, paper_name):
         paper_content = PDFUtils.get_pdf_content(paper_path)
-        extracted_text = [reg.page_content for reg in paper_content]
-        
+        extracted_text = "\n\n".join([reg.page_content for reg in paper_content])
+
         summary_content = await self.summary_client.summarize(extracted_text)
         if summary_content is None:
-            return ResponseSignals.SUMMARY_GENERATION_FAILED.value
+            raise HTTPException(status_code=500, detail=ResponseSignals.SUMMARY_GENERATION_FAILED.value)
+        
         return summary_content
     
-    def save_summary(self, summary_path, summary_content):        
+    async def save_summary(self, summary_path, summary_content):        
         os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-        
-        with open(summary_path, 'w', encoding='utf-8') as f:
-            f.write(summary_content)
+    
+        try:
+            async with aiofiles.open(summary_path, 'w', encoding='utf-8') as f:
+                await f.write(summary_content)
+        except Exception as e:
+            logger.error(f"Error saving summary to {summary_path}: {e}")
+            raise   
             
     def summary_path(self, project_title, paper_name):
         cleaned_filename = f'{self.clean_name(paper_name)}_summary'
