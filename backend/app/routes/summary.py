@@ -12,6 +12,13 @@ import logging
 logger = logging.getLogger('unicorn.errors')
 
 
+def _serialize_summary(summary):
+    summary_dict = summary.dict(by_alias=True, exclude_unset=True)
+    summary_dict["_id"] = str(summary_dict["_id"])
+    summary_dict["summary_project_id"] = str(summary_dict["summary_project_id"])
+    summary_dict["summary_paper_id"] = str(summary_dict["summary_paper_id"])
+    return summary_dict
+
 summaries_router = APIRouter()
 
 # Create a summary.
@@ -32,19 +39,19 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
     
     paper_path, paper_name = PaperController().paper_path(
         project_title=project.project_title,
-        filename=paper.paper_name)
+        paper_name=paper.paper_name)
     
     summary_controller = SummaryController(
         summary_client=request.app.summary_client)
     
     summary_path, summary_name = summary_controller.summary_path(
         project_title=project.project_title, 
-        filename=paper.paper_name)
+        paper_name=paper.paper_name)
     
-    summary_content = summary_controller.generate_summary(paper_path, paper_name)
-    summary_controller.save_summary(summary_path, summary_content)
+    summary_content = await summary_controller.generate_summary(paper_path, paper_name)
+    await summary_controller.save_summary(summary_path, summary_content)
 
-    summary = {
+    summary_record = {
         "summary_project_id": project.id,
         "summary_paper_id": paper.id,
         "summary_name": summary_name,
@@ -53,13 +60,13 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
     }
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summary_record = await summary_model.create_summary(Summary(**summary))
+    summary = await summary_model.create_summary(Summary(**summary_record))
 
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content={
             "message": ResponseSignals.SUCCESS_UPLOAD.value,
-            "summary_id": str(summary_record.id)     
+            "summary": _serialize_summary(summary)     
             }
     )
 
@@ -71,7 +78,7 @@ async def list_summaries(request: Request, project_id: str):
 
     return JSONResponse(
         status_code=200,
-        content=[summary.dict(by_alias=True, exclude_unset=True) for summary in summaries]
+        content=[_serialize_summary(summary) for summary in summaries]
     )
 
 # Get a summary by 
@@ -85,7 +92,7 @@ async def get_summary(request: Request, project_id: str, summary_id: str):
 
     return JSONResponse(
         status_code=200,
-        content=summary.dict(by_alias=True, exclude_unset=True)
+        content=_serialize_summary(summary)  
     )
 
 # Delete a summary by ID
@@ -103,7 +110,10 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
     if not paper:
         raise HTTPException(status_code=404, detail="Paper not found.")
     
-    summary_path, _ = SummaryController().summary_path(
+    summary_controller = SummaryController(
+        summary_client=request.app.summary_client)
+    
+    summary_path, _ = summary_controller.summary_path(
         project_title=project.project_title,
         paper_name=paper.paper_name)
     
@@ -182,9 +192,12 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found.")
     
-    summary_path, summary_name = SummaryController().summary_path(
+    summary_controller = SummaryController(
+        summary_client=request.app.summary_client)
+    
+    summary_path, summary_name =summary_controller.summary_path(
         project_title=project.project_title,
-        filename=paper.paper_name)
+        paper_name=paper.paper_name)
     
     path = Path(summary_path)
     if not path.exists():
@@ -196,7 +209,7 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
 
         #update summary size
         summary.summary_size = os.path.getsize(summary_path)
-        summary_model.update_summary(summary=summary)
+        await summary_model.update_summary(summary=summary)
 
         return PlainTextResponse(
             new_content,
