@@ -3,7 +3,11 @@ from abc import ABC, abstractmethod
 class LLMInterface(ABC):
 
     @abstractmethod
-    async def set_generation_model(self, generation_model_id: str ):
+    async def set_generation_model(self, generation_model_id: str):
+        pass
+
+    @abstractmethod 
+    async def set_summarization_model(self, model_id: str):
         pass
 
     @abstractmethod
@@ -11,22 +15,21 @@ class LLMInterface(ABC):
         pass
 
     @abstractmethod
-    async def set_summary_model(self, summary_model_id: str):
+    async def process_text(self, text: str):
         pass
 
     @abstractmethod
-    async def generate(self, prompt: str, chat_history: list=[], max_output_tokens: int=None,
-                            temperature: float = None):
+    async def generate_text(self, user_prompt: str, system_prompt: str = "", temperature: float = None, max_output_tokens: int = None):
         pass
 
     @abstractmethod
-    async def embed(self, text: str, document_type: str = None):
+    async def embed_text(self, text: str, document_type: str = None):
         pass
 
     @abstractmethod
-    async def summarize(self, text: str):
+    async def summarize_text(self, user_prompt: str, system_prompt: str = "", temperature: float = None, max_output_tokens: int = None):
         pass
 
     @abstractmethod
-    def construct_prompt(self, prompt: str, role: str):
+    async def construct_prompt(self, prompt: str, role: str):
         pass
