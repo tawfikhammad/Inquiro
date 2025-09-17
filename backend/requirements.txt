@@ -5,8 +5,6 @@ pydantic-settings>=2.4.0,<3.0.0
 python-dotenv==1.0.1
 motor==3.6.1
 aiofiles==24.1.0
-openai==1.35.13
-cohere==5.5.8
 qdrant-client==1.10.1
 google-genai==1.33.0
 langchain-community==0.3.14
