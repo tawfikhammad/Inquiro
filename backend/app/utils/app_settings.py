@@ -4,7 +4,7 @@ class AppSettings(BaseSettings):
     APP_NAME: str 
     APP_VERSION: str
 
-    ALLOWWED_FILE_TYPES: list[str]
+    ALLOWED_FILE_TYPES: list[str]
     MAX_FILE_SIZE : int
     CHUNK_SIZE : int
 
@@ -15,19 +15,16 @@ class AppSettings(BaseSettings):
     EMBEDDING_BACKEND : str
     SUMMARY_BACKEND : str
     
-    OPENAI_API_KEY: str
-    OPENAI_API_URL: str
-    COHERE_API_KEY: str
     GEMINI_API_KEY : str
 
     GENERATION_MODEL_ID : str
     EMBEDDING_MODEL_ID : str
-    EMBEDDING_MODEL_SIZE : int
+    EMBEDDING_SIZE : int
     SUMMARY_MODEL_ID : str
 
-    INPUT_DAFAULT_MAX_CHARACTERS : int
-    GENERATION_DAFAULT_MAX_TOKENS : int
-    GENERATION_DAFAULT_TEMPERATURE : float
+    DEFAULT_MAX_INPUT_CHARACTERS : int
+    GENERATION_DEFAULT_MAX_TOKENS : int
+    GENERATION_DEFAULT_TEMPERATURE : float
 
     VECTOR_DB_BACKEND : str
     VECTOR_DB_PATH : str
@@ -35,5 +32,5 @@ class AppSettings(BaseSettings):
     class Config:
         env_file = "backend/.env"  
 
-def app_settings() -> AppSettings:
+def get_settings() -> AppSettings:
     return AppSettings()
