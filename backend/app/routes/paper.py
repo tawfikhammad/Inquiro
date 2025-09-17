@@ -1,17 +1,16 @@
 from fastapi import APIRouter, UploadFile, File, Depends, status, Request, HTTPException
-from fastapi.responses import JSONResponse, FileResponse
-from config import app_settings, AppSettings
+from fastapi.responses import JSONResponse, StreamingResponse
 from controllers import PaperController
-from .schema import ProcessRequest
 from models import ProjectModel, PaperModel, ChunkModel
-from models.db_schemas import Paper, Project, Chunk
+from models.db_schemas import Paper, Chunk
 from utils.enums import ResponseSignals, AssetTypeEnums
 import aiofiles
 from pathlib import Path
+from urllib.parse import quote
 import os
-
-import logging
-logger = logging.getLogger('unicorn.errors')
+from utils import get_settings, AppSettings
+from utils import get_logger
+logger = get_logger(__name__)
 
 def _serialize_paper(paper):
     paper_dict = paper.dict(by_alias=True, exclude_unset=True)
@@ -19,11 +18,11 @@ def _serialize_paper(paper):
     paper_dict["paper_project_id"] = str(paper_dict["paper_project_id"])
     return paper_dict
 
-papers_router = APIRouter()
+paper_router = APIRouter()
 
-@papers_router.post("/upload-paper")
+@paper_router.post("/upload-paper")
 async def upload_paper(request: Request, project_id: str, file: UploadFile = File(...),
-                     app_settings : AppSettings = Depends(app_settings)):
+                     app_settings: AppSettings = Depends(get_settings)):
     
     """
     Upload a file to a project.
@@ -37,14 +36,14 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
-        logger.error(f"Error retrieving project: {project_id}")
-        raise HTTPException(status_code=404, detail="Project not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ResponseSignals.PROJECT_NOT_FOUND.value)
     
-    isvalid, message = PaperController().validfile(file=file)
+    paper_controller = PaperController()
+    isvalid, message = await paper_controller.validfile(file=file)
     if not isvalid:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"message": message})
-    
-    paper_path, paper_name = PaperController().paper_path(project_title=project.project_title, paper_name=file.filename)
+
+    paper_path, paper_name = await paper_controller.paper_path(project_title=project.project_title, paper_name=file.filename)
 
     try:
         async with aiofiles.open(paper_path, "wb") as f:
@@ -56,19 +55,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
                             content={"message": ResponseSignals.FAILED_UPLOAD.value})
     
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
-
-    paper = await paper_model.get_paper_by_name(
-        paper_project_id=project_id,
-        paper_name=paper_name)
-
-    if paper:
-        logger.info(f"Paper already exists: {paper.id}")
-        return JSONResponse(status_code=200,
-                            content={
-                                "message": ResponseSignals.PAPER_EXISTS.value,
-                                "paper": _serialize_paper(paper)})
-
-    paper = await paper_model.create_paper(
+    paper = await paper_model.get_or_create_paper(
         Paper(
             paper_project_id=project.id,
             paper_name=paper_name,
@@ -77,16 +64,15 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         ))
     
     chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
-    chunks = PaperController().get_chunks(
+    chunks = await paper_controller.get_chunks(
         project_title=project.project_title,
         paper_name=paper.paper_name,
         chunk_size=100,
         chunk_overlap=20
     )
 
-    if not chunks:
-        logger.warning(f"No chunks generated for paper {paper.id}.")
-        return JSONResponse(status_code=204, content={"message": ResponseSignals.FAILED_PROCESS_FILE.value})
+    if not chunks or len(chunks) == 0:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No chunks created from the file.")
     
     inserted_chunks = [
         Chunk(
@@ -101,7 +87,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     no_chunks = await chunk_model.insert_chunks(inserted_chunks)
 
     return JSONResponse(
-        status_code=200,
+        status_code=status.HTTP_201_CREATED,
         content={
             "message": ResponseSignals.SUCCESS_UPLOAD.value,
             "paper_id": _serialize_paper(paper),
@@ -110,33 +96,28 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     )
 
 # List all papers by project
-@papers_router.get("/")
+@paper_router.get("/")
 async def list_papers(request: Request, project_id: str):
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
     papers = await paper_model.get_papers_by_project(paper_project_id=project_id)
 
     return JSONResponse(
-        status_code=200,
+        status_code=status.HTTP_200_OK,
         content=[_serialize_paper(paper) for paper in papers]
     )
 
 # Get paper details by ID
-@papers_router.get("/{paper_id}")
+@paper_router.get("/{paper_id}")
 async def get_paper(request: Request, project_id: str, paper_id: str):
     paper_model = await PaperModel.get_instance(db_client= request.app.mongodb_client)
     paper = await paper_model.get_paper_by_id(paper_project_id= project_id, paper_id= paper_id)
-
     if not paper:
-        logger.error(f"Error retrieving paper: {paper_id}")
-        raise HTTPException(status_code=404, detail="Paper not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found.")
 
-    return JSONResponse(
-        status_code=200,
-        content=_serialize_paper(paper)
-    )
+    return JSONResponse(status_code=status.HTTP_200_OK, content=_serialize_paper(paper))
 
 # Delete a paper
-@papers_router.delete("/{paper_id}")
+@paper_router.delete("/{paper_id}")
 async def delete_paper(request: Request, project_id: str, paper_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
@@ -144,62 +125,67 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
-        logger.error(f"Error retrieving project: {project_id}")
-        raise HTTPException(status_code=404, detail="Project not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
     
+    paper_controller = PaperController()
+    paper_path, paper_name = await paper_controller.paper_path(project.project_title, paper.paper_name)
+
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
-        logger.error(f"Error retrieving paper: {paper_id}")
-        raise HTTPException(status_code=404, detail="Paper not found.")
-    
-    paper_path, paper_name = PaperController().paper_path(project_title=project.project_title, paper_name=paper.paper_name)
-
-    # Delete the paper file from the filesystem
-    if Path(paper_path).exists():
-        try:
+         # Clean orphan file if exists
+        if Path(paper_path).exists():
             Path(paper_path).unlink()
-        except Exception as e:
-            logger.error(f"Error deleting summary file: {e}")
-            raise HTTPException(status_code=500, detail="Internal error deleting file.")
+            logger.warning(f"Deleted orphan paper file at {paper_path}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found.")
 
     # Delete the paper file from db
     result = await paper_model.delete_paper_by_project(paper_project_id= project_id ,paper_id= paper_id)
-    if not result:
-        logger.error(f"Error deleting paper: {paper_id}")
-        raise HTTPException(status_code=404, detail="Paper not found.")
+    if result == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found.")
 
     # Delete all chunks associated with the paper
-    del_chunks_no = await chunk_model.del_chunks_by_paperID(project_id=project_id, paper_id=paper_id)
-    if del_chunks_no:
-        logger.info(f"Deleted {del_chunks_no} chunks for paper: {paper_id}")
+    result = await chunk_model.delete_chunks_by_paper(project_id=project_id, paper_id=paper_id)
+    if result==0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No chunks found for the paper.")
 
-    return JSONResponse(
-        status_code=200,
-        content={"message": "Paper deleted successfully."}
-    )
+    # Delete the paper file from the filesystem
+    if Path(paper_path).exists():
+        Path(paper_path).unlink()
+        logger.info(f"Paper file deleted at {paper_path}")
+        
+    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
 
 # Serve PDF file
-@papers_router.get("/view/{paper_id}")
-async def serve_pdf_file(request: Request, project_id: str, paper_id: str):
+@paper_router.get("/view/{paper_id}")
+async def serve_paper_file(request: Request, project_id: str, paper_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
+    if not project:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Project not found.")
+    
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
-        logger.error(f"Error retrieving paper: {paper_id}")
-        raise HTTPException(status_code=404, detail="Paper not found.")
-
-    paper_path, paper_name = PaperController().paper_path(project_title=project.project_title, paper_name=paper.paper_name)
-    if not Path(paper_path):
-        raise HTTPException(status_code=404, detail=ResponseSignals.FILE_NOT_FOUND.value)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paper not found.")
     
+    paper_controller = PaperController()
+    paper_path, paper_name = await paper_controller.paper_path(project_title=project.project_title, paper_name=paper.paper_name)
+    if not Path(paper_path).exists():
+        logger.error(f"Paper file not found at {paper_path}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=ResponseSignals.FILE_NOT_FOUND.value)
+
     try:
-        return FileResponse(
-            paper_path,
+        async def iter_file(path, chunk_size=1024*1024):
+            async with aiofiles.open(path, "rb") as f:
+                while chunk := await f.read(chunk_size):
+                    yield chunk
+
+        return StreamingResponse(
+            iter_file(Path(paper_path)),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"inline; filename={paper_name}.pdf"}
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(paper_name)}.pdf"}
         )
     except Exception as e:
         logger.error(f"Error displaying PDF file: {e}")
-        raise HTTPException(status_code=500, detail="Internal error displaying PDF file.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal error displaying PDF file.")
