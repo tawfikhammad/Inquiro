@@ -9,3 +9,4 @@ qdrant-client==1.10.1
 google-genai==1.33.0
 langchain-community==0.3.14
 pymupdf==1.23.26
+
