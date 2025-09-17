@@ -4,25 +4,20 @@ from controllers import RAGController
 from models import ProjectModel, ChunkModel
 from .schema.rag import PushRequest, SearchRequest
 from utils.enums import ResponseSignals
-import logging
-logger = logging.getLogger('uvicorn.error')
+from utils import get_logger
+logger = get_logger(__name__)
 
 rag_router = APIRouter()
 
-@rag_router.post("/index/push/")
+@rag_router.post("/vdb/index/")
 async def index_project(request: Request, project_id: str, push_request: PushRequest):
-
     project_model = await ProjectModel.get_instance(db_client=request.app.db_client)
     chunk_model = await ChunkModel.get_instance(db_client=request.app.db_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "signal": ResponseSignals.PROJECT_NOT_FOUND_ERROR.value
-            }
-        )
+        logger.error(f"Project with id {project_id} not found.")
+        raise
     
     rag_controller = RAGController(
         vectordb_client=request.app.vectordb_client,
@@ -48,7 +43,7 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         chunks_ids =  list(range(idx, idx + len(page_chunks)))
         idx += len(page_chunks)
         
-        is_inserted = rag_controller.index_into_vector_db(
+        is_inserted = rag_controller.index_into_vdb(
             project=project,
             chunks=page_chunks,
             do_reset=push_request.do_reset,
@@ -85,7 +80,7 @@ async def get_project_index_info(request: Request, project_id: str):
         template_parser=request.app.template_parser,
     )
 
-    collection_info = rag_controller.get_vector_db_collection_info(project=project)
+    collection_info = rag_controller.get_vdb_collection_info(project=project)
 
     return JSONResponse(
         content={
@@ -126,7 +121,7 @@ async def search_index(request: Request, project_id: str, search_request: Search
         }
     )
 
-@rag_router.post("/index/answer")
+@rag_router.post("/answer")
 async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
     
     project_model = await ProjectModel.get_instance(db_client=request.app.db_client)

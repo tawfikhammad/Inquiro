@@ -18,21 +18,17 @@ class RAGController(BaseController):
     def create_collection_name(self, project_id: str):
         return f"collection_{project_id}".strip()
     
-    def reset_vector_db_collection(self, project: Project):
+    def reset_vdb_collection(self, project: Project):
         collection_name = self.create_collection_name(project_id=project.id)
         return self.vectordb_client.delete_collection(collection_name=collection_name)
     
-    def get_vector_db_collection_info(self, project: Project):
+    async def get_vdb_collection_info(self, project: Project):
         collection_name = self.create_collection_name(project_id=project.id)
-        collection_info = self.vectordb_client.get_collection_info(collection_name=collection_name)
+        collection_info = await self.vectordb_client.get_collection_info(collection_name=collection_name)
 
-        return json.loads(
-            json.dumps(collection_info, default=lambda x: x.__dict__)
-        )
+        return json.loads(json.dumps(collection_info, default=lambda x: x.__dict__))
     
-    def index_into_vector_db(self, project: Project, chunks: List[Chunk],
-                                   chunks_ids: List[int], 
-                                   do_reset: bool = False):
+    async def index_into_vdb(self, project: Project, chunks: List[Chunk], chunks_ids: List[int], do_reset: bool = False):
         
         # step1: get collection name
         collection_name = self.create_collection_name(project_id=project.id)
@@ -41,7 +37,7 @@ class RAGController(BaseController):
         texts = [c.chunk_text for c in chunks]
         metadata = [c.chunk_metadata for c in chunks]
         vectors = [
-            self.embedding_client.embed(text=text, document_type=DocumentTypeEnum.DOCUMENT.value)
+            await self.embedding_client.embed(text=text, document_type=DocumentTypeEnum.DOCUMENT.value)
             for text in texts
         ]
 
@@ -63,7 +59,7 @@ class RAGController(BaseController):
 
         return True
 
-    def search_vector_db_collection(self, project: Project, text: str, limit: int = 10):
+    def search_vdb_collection(self, project: Project, text: str, limit: int = 10):
 
         # step1: get collection name
         collection_name = self.create_collection_name(project_id=project.id)
