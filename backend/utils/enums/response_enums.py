@@ -14,11 +14,23 @@ class ResponseSignals(Enum):
     SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
     SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
     PAPER_EXISTS = 'Paper Already Exists'
-    PROJECT_NOT_FOUND_ERROR = 'Project Not Found'
-    INSERT_INTO_VECTORDB_ERROR = 'Failed to Insert Into Vector DB'
-    INSERT_INTO_VECTORDB_SUCCESS = 'Inserted Into Vector DB Successfully'
-    VECTORDB_COLLECTION_RETRIEVED = 'Vector DB Collection Retrieved Successfully'
-    VECTORDB_SEARCH_ERROR = 'Failed to Search Vector DB'
-    VECTORDB_SEARCH_SUCCESS = 'Vector DB Search Successful'
+
+    # Paper Responses
+    PAPER_NOT_FOUND = "Paper Not Found"
+    # Project Responses
+    PROJECT_CREATED_SUCCESS = 'Project Created Successfully'
+    PROJECT_UPDATED_SUCCESS = 'Project Updated Successfully'
+    PROJECT_NOT_FOUND = 'Project Not Found'
+    PROJECT_CREATION_FAILED = 'Failed to Create Project'
+    #Vector DB Responses
+    VDB_CONNECTION_ERROR = 'Failed to Connect to Vector DB'
+    VDB_INSERT_ERROR = 'Failed to Insert Into Vector DB'
+    VDB_INSERT_SUCCESS = 'Inserted Into Vector DB Successfully'
+    VDB_COLLECTION_RETRIEVED = 'Vector DB Collection Retrieved Successfully'
+    VDB_SEARCH_ERROR = 'Failed to Search Vector DB'
+    VDB_SEARCH_SUCCESS = 'Vector DB Search Successful'
+    VDB_UNSUPPORTED_PROVIDER = 'Unsupported Vector DB Provider'
+
+    #RAG Responses
     RAG_ANSWER_ERROR = 'Failed to Generate Answer'
     RAG_ANSWER_SUCCESS = 'Answer Generated Successfully'
