@@ -7,6 +7,6 @@ motor==3.6.1
 aiofiles==24.1.0
 qdrant-client==1.10.1
 google-genai==1.33.0
-langchain-community==0.3.14
+langchain-community==0.3.27
 pymupdf==1.23.26
 
