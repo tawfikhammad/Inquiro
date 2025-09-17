@@ -18,33 +18,38 @@ class SummaryController(BaseController):
         self.summary_client = summary_client
     
     async def generate_summary(self, paper_path, paper_name):
-        paper_content = PDFUtils.get_pdf_content(paper_path)
-        extracted_text = "\n\n".join([reg.page_content for reg in paper_content])
-
-        summary_content = await self.summary_client.summarize(extracted_text)
-        if summary_content is None:
-            raise HTTPException(status_code=500, detail=ResponseSignals.SUMMARY_GENERATION_FAILED.value)
-        
-        return summary_content
-    
-    async def save_summary(self, summary_path, summary_content):        
-        os.makedirs(os.path.dirname(summary_path), exist_ok=True)
-    
         try:
+            paper_content = PDFUtils.get_pdf_content(paper_path)
+            extracted_text = "\n\n".join([reg.page_content for reg in paper_content])
+
+            summary_content = await self.summary_client.summarize(extracted_text)
+            if not summary_content:
+                logger.warning(f"Summary generation failed for paper: {paper_name}")
+                raise
+            logger.info(f"Generated summary for {paper_name}")
+            return summary_content
+        except Exception as e:
+            logger.error(f"Error generating summary for {paper_name}: {e}")
+            raise
+        
+    async def save_summary(self, summary_path, summary_content):        
+        try:
+            os.makedirs(os.path.dirname(summary_path), exist_ok=True)
             async with aiofiles.open(summary_path, 'w', encoding='utf-8') as f:
                 await f.write(summary_content)
+                logger.info(f"Summary saved to {summary_path}")
         except Exception as e:
             logger.error(f"Error saving summary to {summary_path}: {e}")
             raise   
             
-    def summary_path(self, project_title, paper_name):
-        cleaned_filename = f'{self.clean_name(paper_name)}_summary'
+    async def summary_path(self, project_title, paper_name):
+        cleaned_filename = f'{await self.clean_name(paper_name)}_summary'
         summary_filename = f'{cleaned_filename}.md'
         
-        summary_path = self.path_utils.get_summary_path(project_title=project_title, file_name=summary_filename)
+        summary_path = self.path_utils.get_summary_path(project_title, summary_filename)
         return summary_path, cleaned_filename
     
-    def clean_name(self, filename):
+    async def clean_name(self, filename):
         cleaned_filename = re.sub(r"[^\w.]", "", filename)
         cleaned_filename = os.path.splitext(cleaned_filename)[0]
         return cleaned_filename

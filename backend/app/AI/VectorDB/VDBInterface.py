@@ -1,52 +1,50 @@
 from abc import ABC, abstractmethod
+from typing import List
+from models.db_schemas import RetrievedDocument
 
-class VDBInterface(ABC):
+class VectorDBInterface(ABC):
 
     @abstractmethod
-    def connect(self):
-        """Connect to the VDB."""
+    async def connect(self):
         pass
 
     @abstractmethod
-    def disconnect(self):
-        """Disconnect from the VDB."""
+    async def disconnect(self):
         pass
 
     @abstractmethod
-    def create_collection(self, collection_name):
-        """Create a collection in the VDB."""
+    async def is_collection_exist(self, collection_name: str):
         pass
 
     @abstractmethod
-    def is_collection_exist(self, collection_name):
-        """Check if a collection exists in the VDB."""
+    async def list_all_collections(self):
         pass
 
     @abstractmethod
-    def delete_collection(self, query):
+    async def get_collection_info(self, collection_name: str):
         pass
 
     @abstractmethod
-    def get_all_collections(self):
-        """Get all collections in the VDB."""
+    async def delete_collection(self, collection_name: str):
         pass
 
     @abstractmethod
-    def get_collection_info(self, collection_name):
-        """Get information about a specific collection in the VDB."""
+    async def create_collection(self, collection_name: str, 
+                                embedding_size: int,
+                                do_reset: bool = False):
         pass
 
     @abstractmethod
-    def insert_one(self, data):
-        """Insert a single document into the VDB."""
+    async def insert_one(self, collection_name: str, text: str, vector: list,
+                         record_id: str = None):
         pass
 
     @abstractmethod
-    def insert_many(self, data):
-        """Insert multiple documents into the VDB."""
+    async def insert_many(self, collection_name: str, texts: list,
+                          vectors: list, record_ids: list = None, batch_size: int = 50):
         pass
 
     @abstractmethod
-    def search(self, query, top_k=5):
-        """Search for similar documents in the VDB."""
+    async def search(self, collection_name: str, vector: list, limit: int) -> List[RetrievedDocument]:
         pass
+    
