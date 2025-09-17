@@ -1,9 +1,12 @@
+from pymongo import InsertOne
 from .base_model import BaseModel
-from  utils.enums import DatabaseEnums
 from .db_schemas import Chunk, Project
 from bson import ObjectId
+from typing import List
+from utils.enums import DatabaseEnums
+from utils import get_logger
+logger = get_logger(__name__)
 
-from pymongo import InsertOne
 
 class ChunkModel(BaseModel):
     def __init__(self, db_client):
@@ -30,13 +33,18 @@ class ChunkModel(BaseModel):
             return None
         return Chunk(**record)
     
-    async def insert_chunks(self, chunks: list, batch_size:int=100):
-        for i in range(0, len(chunks), batch_size):
-            batch = chunks[i: i+batch_size]  
-            operation= [InsertOne(chunk.dict(by_alias=True, exclude_unset=True)) for chunk in batch]
-            await self.collection.bulk_write(operation)
-        return len(chunks)
-    
+    async def insert_chunks(self, chunks: List[Chunk], batch_size:int=100):
+        try:
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i: i+batch_size]  
+                operation= [InsertOne(chunk.dict(by_alias=True, exclude_unset=True)) for chunk in batch]
+                await self.collection.bulk_write(operation)
+            logger.info(f"Inserted {len(chunks)} chunks into the database.")
+            return len(chunks)
+        except Exception as e:
+            logger.error(f"Error inserting chunks")
+            raise
+        
     
     async def get_project_chunks(self, project_id: str, page_no: int=1, page_size: int=50):
         records = await self.collection.find({
@@ -55,18 +63,30 @@ class ChunkModel(BaseModel):
 
         return [Chunk(**record)for record in records]
     
-    
-    async def del_chunks_by_projectID(self, project_id: str):
-        result = await self.collection.delete_many({
-            "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id})
-        return result.deleted_count
-    
-    
-    async def del_chunks_by_paperID(self, project_id: ObjectId, paper_id: ObjectId):
-        result = await self.collection.delete_many({
-            "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id,
-            "chunk_paper_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id})
-        return result.deleted_count
+    async def delete_chunks_by_project(self, project_id: str):
+        try:
+            result = await self.collection.delete_many({
+                "chunk_project_id": ObjectId(project_id)})
+            if result.deleted_count == 0:
+                logger.warning(f"No chunks found for deletion for project {project_id}")
+                return 0
+            return result.deleted_count
+        except Exception as e:
+            logger.error(f"Error deleting chunks for project {project_id}")
+            raise
+
+    async def delete_chunks_by_paper(self, project_id: str, paper_id: str):
+        try:
+            result = await self.collection.delete_many({
+                "chunk_project_id": ObjectId(project_id),
+                "chunk_paper_id": ObjectId(paper_id)})
+            if result.deleted_count == 0:
+                logger.warning(f"No chunks found for deletion for paper {paper_id} in project {project_id}")
+                return 0
+            return result.deleted_count
+        except Exception as e:
+            logger.error(f"Error deleting chunks for paper {paper_id} in project {project_id}")
+            raise
     
 
 
