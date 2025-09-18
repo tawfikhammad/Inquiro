@@ -1,4 +1,4 @@
-from AI.LLM import LLMProviderFactory
+from AI.LLM import LLMProviderFactory, TemplateParser
 from AI.VectorDB import VDBProviderFactory
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,6 +43,8 @@ async def startup_db():
     # summary client
     app.summary_client = llm_provider_factory.create(provider=settings.SUMMARY_BACKEND)
     await app.summary_client.set_summarization_model(summary_model_id=settings.SUMMARY_MODEL_ID)
+
+    app.template_parser = TemplateParser(lang=settings.LANG, default_lang=settings.DEFAULT_LANG)
     
     # vector db client
     app.vectordb_client = vdb_provider_factory.create(provider=settings.VECTOR_DB_BACKEND)
