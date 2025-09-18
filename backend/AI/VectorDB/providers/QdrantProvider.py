@@ -1,8 +1,8 @@
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from ..VDBInterface import VectorDBInterface
-from models.db_schemas import RetrievedDocument
-from typing import List
+from models.db_schemas import RetrievedChunks
+from typing import List, Optional, Dict
 import uuid
 from utils.app_logging import get_logger
 logger = get_logger(__name__)
@@ -55,20 +55,24 @@ class QdrantProvider(VectorDBInterface):
             logger.warning(f"Collection '{collection_name}' does not exist.")
 
     async def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool = False):
-        if do_reset:
-            _ = await self.delete_collection(collection_name)
+        try:
+            if do_reset:
+                await self.delete_collection(collection_name)
 
-        if not await self.client.collection_exists(collection_name):
-            _ = await self.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=models.VectorParams(
-                    size=embedding_size,
-                    distance=self.distance_metric
+            if not await self.client.collection_exists(collection_name):
+                await self.client.create_collection(
+                    collection_name=collection_name,
+                    vectors_config=models.VectorParams(
+                        size=embedding_size,
+                        distance=self.distance_metric
+                    )
                 )
-            )
-            logger.info(f"Collection '{collection_name}' created.")
-        else:
-            logger.warning(f"Collection '{collection_name}' already exists.")
+                logger.info(f"Collection '{collection_name}' created.")
+            else:
+                logger.warning(f"Collection '{collection_name}' already exists.")
+        except Exception as e:
+            logger.error(f"Error during create collection with name {collection_name}")
+            raise
 
     async def insert_one(self, collection_name:str, text:str, vector:list, record_id:int = None):
 
@@ -90,19 +94,27 @@ class QdrantProvider(VectorDBInterface):
         else:
             logger.warning(f"Collection '{collection_name}' does not exist. Cannot insert document.")
 
-    async def insert_many(self, collection_name:str, texts:list, vectors:list,
-                record_ids:list = None, batch_size:int = 50):
-
+    async def insert_many(
+        self,
+        collection_name: str,
+        texts: List[str],
+        metadata: Optional[List[Dict]] = None,
+        vectors: List[List[float]] = None,
+        record_ids: Optional[List[str]] = None,
+        batch_size: int = 50,
+    ) -> bool:
         if not await self.client.collection_exists(collection_name):
             logger.error(f"Collection '{collection_name}' does not exist.")
-            return False
+            raise
 
         record_ids = record_ids or [str(uuid.uuid4()) for _ in range(len(texts))]
+        metadata = metadata or [{} for _ in range(len(texts))]
+
         try:
             for i in range(0, len(texts), batch_size):
                 batch_points = []
                 for j in range(i, min(i + batch_size, len(texts))):
-                    payload = {"text": texts[j]}
+                    payload = {"text": texts[j], **metadata[j]}
 
                     point = models.PointStruct(
                         id=record_ids[j],
@@ -118,30 +130,34 @@ class QdrantProvider(VectorDBInterface):
 
                 logger.info(f"Inserted batch {i} to {i + len(batch_points)} into collection '{collection_name}'")
 
-            return True
+            logger.info(f"Inserted {len(texts)} documents into collection '{collection_name}'.")
 
         except Exception as e:
             logger.error(f"Error inserting into collection '{collection_name}': {e}")
-            return False 
+            raise
 
-    async def search(self, collection_name:str, query_vector:list, limit:int = 5):
+    async def query_search(self, collection_name:str, query_vector:List[float],
+            limit:int = 5, min_score:float = 0.7, return_metadata: bool = False
+            ):
         try:
             search_result = await self.client.search(
                 collection_name=collection_name,
                 query_vector=query_vector,
-                limit=limit
+                limit=limit,
+                score_threshold=min_score
             )
 
             if not search_result or len(search_result) == 0:
                 logger.warning(f"No results found in collection '{collection_name}'.")
-                return None
+                return []
 
             retrieved_result = [
-                RetrievedDocument(**{
-                            "score": result.score,
-                            "text": result.payload["text"],
-                        }
-                    )
+                RetrievedChunks(**{
+                    "score": result.score,
+                    "text": result.payload.get("text", ""),
+                    "metadata": result.payload if return_metadata else None
+                    }
+                )
                 for result in search_result
             ]
 
@@ -150,4 +166,4 @@ class QdrantProvider(VectorDBInterface):
 
         except Exception as e:
             logger.error(f"Error searching in collection '{collection_name}': {e}")
-            return None
+            raise

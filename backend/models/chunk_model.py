@@ -47,21 +47,33 @@ class ChunkModel(BaseModel):
         
     
     async def get_project_chunks(self, project_id: str, page_no: int=1, page_size: int=50):
-        records = await self.collection.find({
-                    "chunk_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id
-                }).skip((page_no-1) * page_size).limit(page_size).to_list(length=None)
+        try:
+            records = await self.collection.find({
+                "chunk_project_id": ObjectId(project_id)
+                }
+            ).skip((page_no-1) * page_size).limit(page_size).to_list(length=None)
+            if not records or len(records) == 0:
+                logger.info(f"No chunks found for project {project_id} on page {page_no}")
+                return []
 
-        return [Chunk(**record)for record in records]
-    
+            return [Chunk(**record)for record in records]
+        except Exception as e:
+            logger.error(f"Error fetching chunks for project {project_id}")
+            raise
+        
     
     async def get_paper_chunks(self, paper_id: str, page_no: int=1, page_size: int=50):
-        records = await self.collection.find({
-                    "chunk_paper_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id
+        try:
+            records = await self.collection.find({
+                        "chunk_paper_id": ObjectId(paper_id) if isinstance(paper_id, str) else paper_id
                 }).skip(
                     (page_no-1) * page_size
                 ).limit(page_size).to_list(length=None)
 
-        return [Chunk(**record)for record in records]
+            return [Chunk(**record)for record in records]
+        except Exception as e:
+            logger.error(f"Error fetching chunks for paper {paper_id}")
+            raise
     
     async def delete_chunks_by_project(self, project_id: str):
         try:

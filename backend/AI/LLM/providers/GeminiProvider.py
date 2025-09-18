@@ -2,8 +2,8 @@ from ..LLMInterface import LLMInterface
 from ..LLMEnums import GeminiEnums, DocumentTypeEnum
 from google import genai
 from google.genai.types import EmbedContentConfig, GenerateContentConfig, GenerationConfig, Content, Part
-import utils.app_logging import get_logger
-
+from utils import get_logger
+logger = get_logger(__name__)
 
 class GeminiProvider(LLMInterface):
     def __init__(self, api_key: str,
@@ -39,13 +39,13 @@ class GeminiProvider(LLMInterface):
     async def process_text(self, text: str):
         return text[:self.default_max_input_characters].strip()
 
-    async def _chat_completion(self, user_prompt: str, system_prompt: str, model_id: str,
+    async def generate_text(self, user_prompt: str, system_prompt: str,
                                temperature: float = None, max_output_tokens: int = None
                                ):
 
-        if not model_id:
-            self.logger.error("No model provided for chat completion")
-            return None
+        if not self.generation_model_id:
+            self.logger.error("Generation model for Gemini was not set")
+            raise
 
         try:
             config = GenerateContentConfig(
@@ -54,8 +54,8 @@ class GeminiProvider(LLMInterface):
                 max_output_tokens=max_output_tokens or self.default_max_output_tokens,
             )
 
-            chat = self.client.aio.chats.create(model=model_id)
-            response = await chat.send_message(
+            chat = self.client.aio.chats.create(model=self.generation_model_id)
+            response=await chat.send_message(
                 message=await self.process_text(user_prompt),
                 config=config
             )
@@ -64,20 +64,7 @@ class GeminiProvider(LLMInterface):
 
         except Exception as e:
             self.logger.error(f"Error in chat completion with Gemini: {str(e)}")
-            return None
-
-    async def generate_text(self, user_prompt: str, system_prompt: str, temperature: float = None, max_output_tokens: int = None):
-        if not self.generation_model_id:
-            self.logger.error("Generation model for Gemini was not set")
-            return None
-
-        return await self._chat_completion(
-            user_prompt=user_prompt,
-            system_prompt=system_prompt,
-            model_id=self.generation_model_id,
-            temperature=temperature,
-            max_output_tokens=max_output_tokens
-        )
+            raise
 
     async def embed_text(self, text: str, document_type: str = None):
         if not self.embedding_model_id:

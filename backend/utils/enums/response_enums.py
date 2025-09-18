@@ -22,15 +22,19 @@ class ResponseSignals(Enum):
     PROJECT_UPDATED_SUCCESS = 'Project Updated Successfully'
     PROJECT_NOT_FOUND = 'Project Not Found'
     PROJECT_CREATION_FAILED = 'Failed to Create Project'
+
     #Vector DB Responses
     VDB_CONNECTION_ERROR = 'Failed to Connect to Vector DB'
     VDB_INSERT_ERROR = 'Failed to Insert Into Vector DB'
     VDB_INSERT_SUCCESS = 'Inserted Into Vector DB Successfully'
-    VDB_COLLECTION_RETRIEVED = 'Vector DB Collection Retrieved Successfully'
+    VDB_INFO_RETRIEVED_SUCCESS = 'Vector DB Collection Retrieved Successfully'
+    VDB_INFO_RETRIEVED_ERROR = 'Failed to Retrieve Vector DB Collection Info'
     VDB_SEARCH_ERROR = 'Failed to Search Vector DB'
     VDB_SEARCH_SUCCESS = 'Vector DB Search Successful'
+    VDB_NO_SEARCH_RESULTS = 'No Results Found in Vector DB'
     VDB_UNSUPPORTED_PROVIDER = 'Unsupported Vector DB Provider'
 
     #RAG Responses
     RAG_ANSWER_ERROR = 'Failed to Generate Answer'
+    RAG_NO_ANSWER = 'No Answer Generated'
     RAG_ANSWER_SUCCESS = 'Answer Generated Successfully'
