@@ -69,17 +69,17 @@ class PaperModel(BaseModel):
             logger.error(f"Error retrieving paper by ID '{paper_id}' for project '{paper_project_id}'")
             raise
 
-    async def get_papers_by_project(self, paper_project_id: str):
+    async def get_papers_by_project(self, papers_project_id: str):
         try:    
-            query = {"paper_project_id": ObjectId(paper_project_id)}
+            query = {"paper_project_id": ObjectId(papers_project_id)}
             records = await self.collection.find(query).to_list(length=None)
             papers = [Paper(**record) for record in records]
             if len(papers) == 0:
-                logger.warning(f"No papers found for the project {paper_project_id}.")
+                logger.warning(f"No papers found for the project {papers_project_id}.")
                 return []
             return papers
         except Exception as e:
-            logger.error(f"Error fetching papers for project {paper_project_id}: {e}")
+            logger.error(f"Error fetching papers for project {papers_project_id}: {e}")
             raise
         
     async def delete_paper_by_project(self, paper_project_id:str, paper_id: str):

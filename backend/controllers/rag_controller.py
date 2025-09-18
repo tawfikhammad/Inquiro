@@ -7,7 +7,6 @@ from utils import get_logger
 logger = get_logger(__name__)
 
 class RAGController(BaseController):
-
     def __init__(self, vectordb_client, generation_client, 
                  embedding_client, template_parser):
         super().__init__()

@@ -82,32 +82,32 @@ class SummaryModel(BaseModel):
             logger.error(f"Error retrieving summary '{summary_id}' for project '{summary_project_id}': {e}")
             raise
 
-    async def get_summaries_by_project(self, project_id: str, summary_type: str = None):
+    async def get_summaries_by_project(self, summaries_project_id: str, summary_type: str = None):
         try:    
-            query = {"summary_project_id": project_id}
+            query = {"summary_project_id": summaries_project_id}
             if summary_type:
                 query["summary_type"] = summary_type
                 
             records = await self.collection.find(query).to_list(length=None)
             if not records:
-                logger.warning(f"No summaries found for project '{project_id}'")
+                logger.warning(f"No summaries found for project '{summaries_project_id}'")
                 return []
             summaries = [Summary(**record) for record in records]
             return summaries
         except Exception as e:
-            logger.error(f"Error retrieving summaries for project '{project_id}' : {e}")
+            logger.error(f"Error retrieving summaries for project '{summaries_project_id}' : {e}")
             raise
     
-    async def delete_summary_by_project(self, project_summary_id: str, summary_id: str):
+    async def delete_summary_by_project(self, summary_project_id: str, summary_id: str):
         try:
             result = await self.collection.delete_one(
-                {"summary_project_id": ObjectId(project_summary_id),
+                {"summary_project_id": ObjectId(summary_project_id),
                 "_id": ObjectId(summary_id)}
             )
             if result.deleted_count == 0:
-                logger.warning(f"Summary not found for deletion with ID: {summary_id} in project {project_summary_id}")
+                logger.warning(f"Summary not found for deletion with ID: {summary_id} in project {summary_project_id}")
                 return 0
             return result.deleted_count
         except Exception as e:
-            logger.error(f"Error deleting summary {summary_id} from project {project_summary_id}: {e}")
+            logger.error(f"Error deleting summary {summary_id} from project {summary_project_id}: {e}")
             raise
