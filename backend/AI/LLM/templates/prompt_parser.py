@@ -2,7 +2,6 @@
 import os
 
 class TemplateParser:
-
     def __init__(self, lang: str=None, default_lang='en'):
         self.current_path = os.path.dirname(os.path.abspath(__file__))
         self.default_lang = default_lang

@@ -8,7 +8,6 @@ system_prompt = Template("\n".join([
     "Do not add information that is not in the documents.",
     "Split content into sections with headings if necessary.",
     "Keep the summary concise, structured, and easy to understand.",
-    "Write the summary in the same language as the original text.",
 ]))
 
 #### Document ####

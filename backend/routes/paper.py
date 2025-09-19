@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Depends, status, Request, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, status, Request, HTTPException, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from controllers import PaperController
 from models import ProjectModel, PaperModel, ChunkModel
@@ -105,7 +105,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
 @paper_router.get("/")
 async def list_papers(request: Request, project_id: str):
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
-    papers = await paper_model.get_papers_by_project(paper_project_id=project_id)
+    papers = await paper_model.get_papers_by_project(papers_project_id=project_id)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -140,9 +140,8 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     paper_controller = PaperController()
-    paper_path, paper_name = await paper_controller.paper_path(project.project_title, paper.paper_name)
-
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
+    paper_path, paper_name = await paper_controller.paper_path(project.project_title, paper.paper_name)
     if not paper:
          # Clean orphan file if exists
         if Path(paper_path).exists():
@@ -172,7 +171,7 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
         Path(paper_path).unlink()
         logger.info(f"Paper file deleted at {paper_path}")
         
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Serve PDF file
 @paper_router.get("/view/{paper_id}")

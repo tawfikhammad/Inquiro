@@ -17,6 +17,7 @@ class ChunkModel(BaseModel):
     async def get_instance(cls, db_client):
         instance = cls(db_client)
         await instance.ensure_indexes()
+        logger.info("ChunkModel instance created and indexes ensured.")
         return instance
     
     async def ensure_indexes(self):
@@ -60,15 +61,11 @@ class ChunkModel(BaseModel):
             logger.error(f"Error fetching chunks for project {Chunks_project_id}")
             raise
 
-
-    async def get_paper_chunks(self, chunks_paper_id: str, page_no: int=1, page_size: int=50):
+    async def get_paper_chunks(self, chunks_paper_id: str):
         try:
             records = await self.collection.find({
-                        "chunk_paper_id": ObjectId(chunks_paper_id) if isinstance(chunks_paper_id, str) else chunks_paper_id
-                }).skip(
-                    (page_no-1) * page_size
-                ).limit(page_size).to_list(length=None)
-
+                        "chunk_paper_id": ObjectId(chunks_paper_id)
+                }).to_list(length=None)
             return [Chunk(**record)for record in records]
         except Exception as e:
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}")
@@ -98,9 +95,3 @@ class ChunkModel(BaseModel):
         except Exception as e:
             logger.error(f"Error deleting chunks for paper {chunks_paper_id} in project {chunks_project_id}")
             raise
-    
-
-
-
-    
-

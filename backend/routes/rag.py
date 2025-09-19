@@ -13,8 +13,8 @@ rag_router = APIRouter()
 async def index_project(request: Request, project_id: str, push_request: PushRequest):
     logger.info(f"Indexing request received for project_id: {project_id} with reset={push_request.do_reset}")
 
-    project_model = await ProjectModel.get_instance(db_client=request.app.db_client)
-    chunk_model = await ChunkModel.get_instance(db_client=request.app.db_client)
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
@@ -64,7 +64,7 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
 @rag_router.get("/vdb/info")
 async def get_project_index_info(request: Request, project_id: str):
     logger.info(f"Index info request received for project_id: {project_id}")
-    project_model = await ProjectModel.get_instance(db_client=request.app.db_client)
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
         raise HTTPException(
@@ -77,7 +77,7 @@ async def get_project_index_info(request: Request, project_id: str):
         embedding_client=request.app.embedding_client,
         template_parser=request.app.template_parser,
     )
-    collection_info = rag_controller.get_vdb_collection_info(project=project)
+    collection_info = await rag_controller.get_vdb_collection_info(project=project)
     if not collection_info:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -96,7 +96,7 @@ async def get_project_index_info(request: Request, project_id: str):
 async def search_index(request: Request, project_id: str, search_request: SearchRequest):
     logger.info(f"Search request received for project_id: {project_id} with query: {search_request.query} and limit: {search_request.limit}")
 
-    project_model = await ProjectModel.get_instance(db_client=request.app.db_client)
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
         logger.error(f"Project with id {project_id} not found.")
@@ -133,7 +133,7 @@ async def search_index(request: Request, project_id: str, search_request: Search
 async def answer_rag(request: Request, project_id: str, search_request: SearchRequest):
     logger.info(f"Answer request received for project_id: {project_id} with query: {search_request.query} and limit: {search_request.limit}")
 
-    project_model = await ProjectModel.get_instance(db_client=request.app.db_client)
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
         logger.error(f"Project with id {project_id} not found.")

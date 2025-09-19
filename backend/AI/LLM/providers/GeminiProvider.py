@@ -111,7 +111,6 @@ class GeminiProvider(LLMInterface):
                 contents=user_prompt,
                 config=config
             )
-            print(summary)
             return summary.text
         
         except Exception as e:

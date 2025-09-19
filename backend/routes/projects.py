@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, Depends, status, Request, HTTPException, Body
+from fastapi import APIRouter, File, Depends, status, Request, HTTPException, Response
 from fastapi.responses import JSONResponse
 from models import ProjectModel, PaperModel, SummaryModel
 from models.db_schemas import Project
@@ -83,7 +83,7 @@ async def delete_all(request: Request):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Delete a project.
 @project_router.delete("/{project_id}")
@@ -97,7 +97,7 @@ async def delete_project(request: Request, project_id: str):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # List all assets (papers and summaries) in a project.
 @project_router.get('/{project_id}/assets')

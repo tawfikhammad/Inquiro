@@ -20,14 +20,14 @@ class PaperModel(BaseModel):
     async def ensure_indexes(self):
         await self.create_indexes(self.collection, Paper.get_indexes())
 
-    async def create_paper(self, paper: Paper) -> Paper:
+    async def create_paper(self, Paper: Paper) -> Paper:
         try:
-            res = await self.collection.insert_one(paper.dict(by_alias=True, exclude_unset=True))
-            paper.id = res.inserted_id
-            logger.info(f"Paper created with ID: {paper.id} and name: {paper.paper_name}")
-            return paper
+            res = await self.collection.insert_one(Paper.dict(by_alias=True, exclude_unset=True))
+            Paper.id = res.inserted_id
+            logger.info(f"Paper created with ID: {Paper.id} and name: {Paper.paper_name}")
+            return Paper
         except Exception as e:
-            logger.error(f"Error creating paper with ID: {paper.id} and name: {paper.paper_name}")
+            logger.error(f"Error creating paper with ID: {Paper.id} and name: {Paper.paper_name}")
             raise
 
     async def get_paper_by_name(self, paper_project_id: ObjectId, paper_name: str):
@@ -44,15 +44,15 @@ class PaperModel(BaseModel):
             logger.error(f"Error retrieving paper '{paper_name}' for project '{paper_project_id}'")
             raise
 
-    async def get_or_create_paper(self, paper: Paper) -> Paper:
+    async def get_or_create_paper(self, Paper: Paper) -> Paper:
         try:
-            paper = await self.get_paper_by_name(paper.paper_project_id, paper.paper_name)
+            paper = await self.get_paper_by_name(Paper.paper_project_id, Paper.paper_name)
             if not paper:
-                paper = await self.create_paper(paper)
+                paper = await self.create_paper(Paper)
                 return paper
             return paper
         except Exception as e:
-            logger.error(f"Error in get_or_create_paper for {paper.paper_name}: {e}")
+            logger.error(f"Error in get_or_create_paper for {Paper.paper_name}: {e}")
             raise
     
     async def get_paper_by_id(self, paper_project_id: str, paper_id: str):
