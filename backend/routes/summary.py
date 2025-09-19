@@ -1,7 +1,7 @@
-from fastapi import APIRouter, status, Request, HTTPException, Body
+from fastapi import APIRouter, status, Request, HTTPException, Body, Response
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from controllers import PaperController, SummaryController
-from models import ProjectModel, PaperModel, SummaryModel
+from models import ProjectModel, PaperModel, SummaryModel, ChunkModel
 from models.db_schemas import Summary
 from utils.enums import ResponseSignals, AssetTypeEnums
 from pathlib import Path
@@ -28,6 +28,7 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
 
     # Check if the project exists
     project = await project_model.get_project_by_id(project_id=project_id)
@@ -43,23 +44,20 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PAPER_NOT_FOUND.value
         )
-    paper_controller = PaperController()
-    paper_path, paper_name = await paper_controller.paper_path(project.project_title, paper.paper_name)
-    
     summary_controller = SummaryController(
         summary_client=request.app.summary_client,
         template_parser=request.app.template_parser
     )
     summary_path, summary_name = await summary_controller.summary_path(project.project_title, paper.paper_name)
 
-    summary = Summary(
+    summary_object = Summary(
         summary_project_id=project.id,
         summary_paper_id=paper.id,
         summary_name=summary_name,
         summary_type=AssetTypeEnums.MD.value
     )
     if Path(summary_path).exists():
-        summary = await summary_model.get_or_create_summary(summary)
+        summary = await summary_model.get_or_create_summary(summary_object)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED, 
             content={
@@ -68,13 +66,20 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
             }
         )
     try:
-        summary_content = await summary_controller.generate_summary(paper_path, paper_name)
+        paper_chunks = await chunk_model.get_paper_chunks(chunks_paper_id=paper.id)
+        if not paper_chunks or len(paper_chunks) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail=ResponseSignals.NO_PAPER_CHUNKS.value
+            )
+        paper_text = "\n\n".join([chunk.chunk_text for chunk in paper_chunks])
+        summary_content = await summary_controller.generate_summary(paper_text, paper.paper_name)
         await summary_controller.save_summary(summary_path, summary_content)
 
-        summary.summary_size = os.path.getsize(summary_path)
-        summary = await summary_model.get_or_create_summary(summary)
+        summary_object.summary_size = os.path.getsize(summary_path)
+        summary = await summary_model.get_or_create_summary(summary_object)
 
-        logger.info(f"Summary created successfully for paper: {paper_name}")
+        logger.info(f"Summary created successfully for paper: {paper.paper_name}")
     except Exception as e:
         logger.error(f"Failed to create summary: {e}")
         if Path(summary_path).exists():
@@ -97,7 +102,7 @@ async def list_summaries(request: Request, project_id: str):
     logger.info(f"List summaries request received for project_id: {project_id}")
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summaries = await summary_model.get_summaries_by_project(summary_project_id=project_id)
+    summaries = await summary_model.get_summaries_by_project(summaries_project_id=project_id)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -172,7 +177,7 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
         Path(summary_path).unlink()
         logger.info(f"Summary file deleted at {summary_path}")
 
-    return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Serve the summary file
 @summary_router.get("/view/{summary_id}")

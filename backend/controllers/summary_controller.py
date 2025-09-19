@@ -11,13 +11,11 @@ class SummaryController(BaseController):
         self.summary_client = summary_client
         self.template_parser = template_parser
     
-    async def generate_summary(self, paper_path, paper_name):
+    async def generate_summary(self, paper_text, paper_name):
         try:
-            paper_content = PDFUtils.get_pdf_content(paper_path)
-            extracted_text = "\n\n".join([reg.page_content for reg in paper_content])
-
+            logger.info("get prompts for summary generation")
             system_prompt = self.template_parser.get("summarizer", "system_prompt")
-            documents_prompts = self.template_parser.get("summarizer", "document_prompt", {extracted_text})
+            documents_prompts = self.template_parser.get("summarizer", "document_prompt", {"extracted_text":paper_text})
             footer_prompt = self.template_parser.get("summarizer", "footer_prompt")
 
             full_prompt = "\n\n".join([documents_prompts, footer_prompt])
