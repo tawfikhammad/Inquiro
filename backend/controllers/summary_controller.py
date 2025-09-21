@@ -1,33 +1,37 @@
 from .base_controller import BaseController
-from AI.LLM import LLMProviderFactory, LLMModel
-from fastapi import UploadFile
-from utils.enums import ResponseSignals
-from utils import PathUtils, PDFUtils
-from fastapi import HTTPException
+from utils import PDFUtils
 import aiofiles
-import os
-import re
-
-import logging
-logger = logging.getLogger('unicorn.errors')
-
+import os, re
+from utils import get_logger
+logger = get_logger(__name__)
 class SummaryController(BaseController):
-    def __init__(self, summary_client):
+    def __init__(self, summary_client, template_parser):
         super().__init__()
-        self.path_utils = PathUtils()
-        self.summary_client = summary_client
-    
-    async def generate_summary(self, paper_path, paper_name):
-        try:
-            paper_content = PDFUtils.get_pdf_content(paper_path)
-            extracted_text = "\n\n".join([reg.page_content for reg in paper_content])
 
-            summary_content = await self.summary_client.summarize(extracted_text)
+        self.summary_client = summary_client
+        self.template_parser = template_parser
+    
+    async def generate_summary(self, paper_text, paper_name):
+        try:
+            logger.info("get prompts for summary generation")
+            system_prompt = self.template_parser.get("summarizer", "system_prompt")
+            documents_prompts = self.template_parser.get("summarizer", "document_prompt", {"extracted_text":paper_text})
+            footer_prompt = self.template_parser.get("summarizer", "footer_prompt")
+
+            full_prompt = "\n\n".join([documents_prompts, footer_prompt])
+
+            summary_content = await self.summary_client.summarize_text(
+                user_prompt=full_prompt,
+                system_prompt=system_prompt,
+                temperature=0.2
+            )
             if not summary_content:
                 logger.warning(f"Summary generation failed for paper: {paper_name}")
                 raise
+
             logger.info(f"Generated summary for {paper_name}")
             return summary_content
+        
         except Exception as e:
             logger.error(f"Error generating summary for {paper_name}: {e}")
             raise

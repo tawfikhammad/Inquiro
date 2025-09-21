@@ -1,14 +1,10 @@
-from config import app_settings
-from fastapi import Request
+from utils import get_logger, get_settings
 
-import logging
-logger = logging.getLogger('unicorn.errors')
-
-
+logger = get_logger(__name__)
 class BaseModel:
     def __init__(self, db_client):
         self.db_client = db_client
-        self.settings = app_settings()
+        self.settings = get_settings()
 
     async def create_indexes(self, collection, indexes_list):
         """Generic method to create indexes from a list of index definitions"""

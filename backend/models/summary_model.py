@@ -14,19 +14,20 @@ class SummaryModel(BaseModel):
     async def get_instance(cls, db_client: object):
         instance = cls(db_client=db_client)
         await instance.ensure_indexes()
+        logger.info("SummaryModel instance created and indexes ensured.")
         return instance
     
     async def ensure_indexes(self):
         await self.create_indexes(self.collection, Summary.get_indexes())
 
-    async def create_summary(self, summary: Summary):
+    async def create_summary(self, Summary: Summary):
         try:
-            res = await self.collection.insert_one(summary.dict(by_alias=True, exclude_unset=True))
-            summary.id = res.inserted_id
-            logger.info(f"Summary created with ID: {summary.id} and name {summary.summary_name}")
-            return summary
+            res = await self.collection.insert_one(Summary.dict(by_alias=True, exclude_unset=True))
+            Summary.id = res.inserted_id
+            logger.info(f"Summary created with ID: {Summary.id} and name {Summary.summary_name}")
+            return Summary
         except Exception as e:
-            logger.error(f"Error creating summary with ID: {summary.id} and name {summary.summary_name}: {e}")
+            logger.error(f"Error creating summary with ID: {Summary.id} and name {Summary.summary_name}: {e}")
             raise
 
     async def get_summary_by_name(self, summary_project_id: str, summary_name: str):
@@ -43,15 +44,15 @@ class SummaryModel(BaseModel):
             logger.error(f"Error retrieving summary '{summary_name}' for project '{summary_project_id}': {e}")
             raise
 
-    async def get_or_create_summary(self, summary: Summary) -> Summary:
+    async def get_or_create_summary(self, Summary: Summary) -> Summary:
         try:
-            summary = await self.get_summary_by_name(summary.summary_project_id, summary.summary_name)
+            summary = await self.get_summary_by_name(Summary.summary_project_id, Summary.summary_name)
             if not summary:
-                summary = await self.create_summary(summary)
+                summary = await self.create_summary(Summary)
                 return summary
             return summary
         except Exception as e:
-            logger.error(f"Error in get_or_create_summary for {summary.summary_name}: {e}")
+            logger.error(f"Error in get_or_create_summary for {Summary.summary_name}: {e}")
             raise
     
     async def update_summary(self, summary: Summary):
@@ -82,32 +83,32 @@ class SummaryModel(BaseModel):
             logger.error(f"Error retrieving summary '{summary_id}' for project '{summary_project_id}': {e}")
             raise
 
-    async def get_summaries_by_project(self, project_id: str, summary_type: str = None):
+    async def get_summaries_by_project(self, summaries_project_id: str, summary_type: str = None):
         try:    
-            query = {"summary_project_id": project_id}
+            query = {"summary_project_id": ObjectId(summaries_project_id)}
             if summary_type:
                 query["summary_type"] = summary_type
                 
             records = await self.collection.find(query).to_list(length=None)
             if not records:
-                logger.warning(f"No summaries found for project '{project_id}'")
+                logger.warning(f"No summaries found for project '{summaries_project_id}'")
                 return []
             summaries = [Summary(**record) for record in records]
             return summaries
         except Exception as e:
-            logger.error(f"Error retrieving summaries for project '{project_id}' : {e}")
+            logger.error(f"Error retrieving summaries for project '{summaries_project_id}' : {e}")
             raise
     
-    async def delete_summary_by_project(self, project_summary_id: str, summary_id: str):
+    async def delete_summary_by_project(self, summary_project_id: str, summary_id: str):
         try:
             result = await self.collection.delete_one(
-                {"summary_project_id": ObjectId(project_summary_id),
+                {"summary_project_id": ObjectId(summary_project_id),
                 "_id": ObjectId(summary_id)}
             )
             if result.deleted_count == 0:
-                logger.warning(f"Summary not found for deletion with ID: {summary_id} in project {project_summary_id}")
+                logger.warning(f"Summary not found for deletion with ID: {summary_id} in project {summary_project_id}")
                 return 0
             return result.deleted_count
         except Exception as e:
-            logger.error(f"Error deleting summary {summary_id} from project {project_summary_id}: {e}")
+            logger.error(f"Error deleting summary {summary_id} from project {summary_project_id}: {e}")
             raise

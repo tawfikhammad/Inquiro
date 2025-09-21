@@ -12,16 +12,15 @@ import re
 class PaperController(BaseController):
     def __init__(self):
         super().__init__()
-        self.path_utils = PathUtils()
 
     async def validfile(self, file: UploadFile):
         if file.content_type not in self.app_settings.ALLOWED_FILE_TYPES:
             return False, ResponseSignals.INVALID_FILE_TYPE.value
         
         if file.size > self.app_settings.MAX_FILE_SIZE:
-            return False, ResponseSignals.INVALED_FILE_SIZE.value
+            return False, ResponseSignals.INVALID_FILE_SIZE.value
         
-        return True, ResponseSignals.SUCCESS_UPLOAD.value
+        return True, ResponseSignals.VALID_FILE.value
 
     async def paper_path(self, project_title: str, paper_name: str):
         cleaned_filename = await self.clean_name(paper_name)

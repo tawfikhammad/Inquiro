@@ -1,22 +1,24 @@
 from enum import Enum
 
 class ResponseSignals(Enum):
+
+    # General Responses
     SUCCESS_UPLOAD = 'File Uploaded Successfully'
     FAILED_UPLOAD = 'Failed to Upload File'
+    FAILED_SAVING = 'Failed to save file'
     INVALID_FILE_TYPE = 'Invalid File Type'
-    INVALED_FILE_SIZE = 'File Size Too Large'
-    FAILED_PROCESS_FILE = 'Failed to Process File'
-    SUCCESS_PROCESS_FILE = 'File Processed Successfully'
-    SUCCESS_PROCESS = 'Processing Successful'
-    FAILED_PROCESS = 'Processing Failed'
-    NO_ATTACHED_FILE = 'No Attached File'
-    FILE_NOT_FOUND = 'No File Found With the ID'
-    SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
-    SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
-    PAPER_EXISTS = 'Paper Already Exists'
+    INVALID_FILE_SIZE = 'File Size Too Large'
+    VALID_FILE = 'Valid File'
 
     # Paper Responses
     PAPER_NOT_FOUND = "Paper Not Found"
+    PAPER_EXISTS = 'Paper Already Exists'
+    PAPER_DISPLAY_ERROR = 'Failed To Display Paper'
+
+    # Chunk Responses
+    NO_CHUNKS_CREATED = 'No Chunks Created'
+    NO_PAPER_CHUNKS = "No Paper Chunks Founded"
+
     # Project Responses
     PROJECT_CREATED_SUCCESS = 'Project Created Successfully'
     PROJECT_UPDATED_SUCCESS = 'Project Updated Successfully'
@@ -38,3 +40,11 @@ class ResponseSignals(Enum):
     RAG_ANSWER_ERROR = 'Failed to Generate Answer'
     RAG_NO_ANSWER = 'No Answer Generated'
     RAG_ANSWER_SUCCESS = 'Answer Generated Successfully'
+
+    #Summary Responses
+    SUMMARY_NOT_FOUND = 'Summary Not Found'
+    SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
+    SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
+    SUMMARY_EXISTS = 'Summary Already Exists'
+    SUMMARY_DISPLAY_ERROR = 'Failed to Display Summary'
+    SUMMARY_UPDATE_ERROR = 'Failed to Update Summary'
