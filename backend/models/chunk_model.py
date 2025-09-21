@@ -36,14 +36,16 @@ class ChunkModel(BaseModel):
     
     async def insert_chunks(self, chunks: List[Chunk], batch_size: int=100):
         try:
+            inserted_ids = []
             for i in range(0, len(chunks), batch_size):
                 batch = chunks[i: i+batch_size]  
-                operation= [InsertOne(chunk.dict(by_alias=True, exclude_unset=True)) for chunk in batch]
-                await self.collection.bulk_write(operation)
-            logger.info(f"Inserted {len(chunks)} chunks into the database.")
-            return len(chunks)
+                docs = [chunk.dict(by_alias=True, exclude_unset=True) for chunk in batch]
+                res = await self.collection.insert_many(docs)
+                inserted_ids.extend(res.inserted_ids)
+                logger.info(f"Inserted batch of {len(docs)} chunks.")
+            return inserted_ids
         except Exception as e:
-            logger.error(f"Error inserting chunks")
+            logger.error(f"Error inserting chunks: {e}")
             raise
     
     async def get_project_chunks(self, Chunks_project_id: str, page_no: int=1, page_size: int=50):

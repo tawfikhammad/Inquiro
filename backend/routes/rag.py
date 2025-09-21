@@ -116,7 +116,7 @@ async def search_index(request: Request, project_id: str, search_request: Search
         embedding_client=request.app.embedding_client,
         template_parser=request.app.template_parser,
     )
-    results = rag_controller.search(
+    results = await rag_controller.search(
         project=project,
         query=search_request.query,
         limit=search_request.limit
@@ -153,7 +153,7 @@ async def answer_rag(request: Request, project_id: str, search_request: SearchRe
         embedding_client=request.app.embedding_client,
         template_parser=request.app.template_parser,
     )
-    answer, full_prompt = rag_controller.answer(
+    answer, full_prompt = await rag_controller.answer(
         project=project,
         query=search_request.query,
         limit=search_request.limit,

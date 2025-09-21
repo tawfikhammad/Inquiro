@@ -69,12 +69,11 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             paper_size=os.path.getsize(paper_path)
         )
     )
-    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
     chunks = await paper_controller.get_chunks(
         project_title=project.project_title,
         paper_name=paper.paper_name,
-        chunk_size=100,
-        chunk_overlap=20
+        chunk_size=1000,
+        chunk_overlap=150
     )
     if not chunks or len(chunks) == 0:
         raise HTTPException(
@@ -90,14 +89,15 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             chunk_id=i
         ) for i, chunk in enumerate(chunks)
     ]
-    no_chunks = await chunk_model.insert_chunks(inserted_chunks)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
+    chunks_ids = await chunk_model.insert_chunks(inserted_chunks)
 
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content={
             "message": ResponseSignals.SUCCESS_UPLOAD.value,
             "paper_id": _serialize_paper(paper),
-            "no_chunks": no_chunks
+            "inserted_chunks_count": len(chunks_ids)
         }
     )
 

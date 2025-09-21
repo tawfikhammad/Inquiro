@@ -1,3 +1,4 @@
+import aiofiles
 from fastapi import APIRouter, status, Request, HTTPException, Body, Response
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from controllers import PaperController, SummaryController
@@ -269,15 +270,15 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
     )
     summary_path, summary_name = await summary_controller.summary_path(project.project_title, paper.paper_name)
     
-    path = Path(summary_path)
-    if not path.exists():
+    if not Path(summary_path).exists():
         logger.error(f"Summary file not found at: {summary_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.FILE_NOT_FOUND.value
+            detail=ResponseSignals.SUMMARY_NOT_FOUND.value
         )
     try:
-        path.write_text(new_content, encoding="utf-8")
+        async with aiofiles.open(summary_path, 'w', encoding='utf-8') as f:
+            await f.write(new_content)
 
         #update summary size
         summary.summary_size = os.path.getsize(summary_path)

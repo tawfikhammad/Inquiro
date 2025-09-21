@@ -3,7 +3,6 @@ from .base_controller import BaseController
 from utils import PDFUtils
 from fastapi import UploadFile
 from utils.enums import ResponseSignals
-from utils import PathUtils
 from utils import get_logger
 logger = get_logger(__name__)
 import os
@@ -33,7 +32,7 @@ class PaperController(BaseController):
         cleaned_filename = os.path.splitext(cleaned_filename)[0]
         return cleaned_filename
     
-    async def get_chunks(self, project_title: str, paper_name: str, chunk_size: int=100, chunk_overlap: int=20):
+    async def get_chunks(self, project_title: str, paper_name: str, chunk_size: int=1000, chunk_overlap: int=150):
         try:
             paper_filename = f'{paper_name}.pdf'
             paper_path = self.path_utils.get_file_path(project_title, paper_filename)
@@ -44,8 +43,8 @@ class PaperController(BaseController):
             
             text = [reg.page_content for reg in paper_content]
             metadata =  [
-                {**reg.metadata, "project_title": project_title, "paper_name": paper_name}
-                for idx, reg in enumerate(paper_content)
+                {"project_title": project_title, "paper_name": paper_name, "page": reg.metadata['page'], "total_pages": len(paper_content)}
+                for reg in paper_content
             ]
 
             splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
