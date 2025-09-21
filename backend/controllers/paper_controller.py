@@ -33,7 +33,7 @@ class PaperController(BaseController):
         cleaned_filename = os.path.splitext(cleaned_filename)[0]
         return cleaned_filename
     
-    async def get_chunks(self, project_title: str, paper_name: str, chunk_size: int=100, chunk_overlap: int=20):
+    async def get_chunks(self, project_title: str, paper_name: str, chunk_size: int=1000, chunk_overlap: int=150):
         try:
             paper_filename = f'{paper_name}.pdf'
             paper_path = self.path_utils.get_file_path(project_title, paper_filename)
