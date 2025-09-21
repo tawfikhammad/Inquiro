@@ -33,6 +33,13 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
     inserted_items_count = 0
     idx = 0
 
+    collection_name = rag_controller.create_collection_name(project_id=project_id)
+    await request.app.vectordb_client.create_collection(
+        collection_name=collection_name,
+        embedding_size=request.app.embedding_client.embedding_size,
+        do_reset=push_request.do_reset,
+    )
+
     while has_records:
         page_chunks = await chunk_model.get_project_chunks(Chunks_project_id=project_id, page_no=page_no)
         if len(page_chunks):
@@ -45,10 +52,9 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
         chunks_ids =  list(range(idx, idx + len(page_chunks)))
         idx += len(page_chunks)
         
-        rag_controller.index_into_vdb(
-            project=project,
+        await rag_controller.index_into_vdb(
+            collection_name=collection_name,
             chunks=page_chunks,
-            do_reset=push_request.do_reset,
             chunks_ids=chunks_ids
         )   
         inserted_items_count += len(page_chunks)

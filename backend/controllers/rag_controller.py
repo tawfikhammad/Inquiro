@@ -33,12 +33,8 @@ class RAGController(BaseController):
             logger.error(f"Error retrieving collection info for project {str(project.id)}: {e}")
             return None
         
-    async def index_into_vdb(self, project: Project, chunks: List[Chunk], chunks_ids: List[int], do_reset: bool = False):
+    async def index_into_vdb(self, collection_name: str, chunks: List[Chunk], chunks_ids: List[int]):
         try:
-            # step1: get collection name
-            collection_name = self.create_collection_name(project_id=str(project.id))
-
-            # step2: manage items
             texts = [c.chunk_text for c in chunks]
             metadata = [c.chunk_metadata for c in chunks]
             vectors = [
@@ -46,15 +42,8 @@ class RAGController(BaseController):
                 for text in texts
             ]
             if not vectors or len(vectors) == 0:
-                logger.error(f"Error embedding the text of chunks of project with id: {str(project.id)} ")
+                logger.error(f"Error embedding the text of chunks of collection {collection_name} ")
                 raise
-
-            # step3: create collection if not exists
-            await self.vectordb_client.create_collection(
-                collection_name=collection_name,
-                embedding_size=self.embedding_client.embedding_size,
-                do_reset=do_reset,
-            )
 
             # step4: insert into vector db
             await self.vectordb_client.insert_many(
@@ -66,7 +55,7 @@ class RAGController(BaseController):
             )
 
         except Exception as e:
-            logger.error(f"Error indexing into VDB for project {str(project.id)}: {e}")
+            logger.error(f"Error indexing into VDB for collection {collection_name}: {e}")
             raise
 
     async def search(self, project: Project, query: str, limit: int = 10):
