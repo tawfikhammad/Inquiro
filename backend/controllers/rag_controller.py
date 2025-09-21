@@ -3,6 +3,7 @@ from models.db_schemas import Project, Chunk
 from AI.LLM.LLMEnums import DocumentTypeEnum
 from typing import List
 import json
+import asyncio
 from utils import get_logger
 logger = get_logger(__name__)
 
@@ -37,15 +38,18 @@ class RAGController(BaseController):
         try:
             texts = [c.chunk_text for c in chunks]
             metadata = [c.chunk_metadata for c in chunks]
-            vectors = [
-                await self.embedding_client.embed_text(text=text, document_type=DocumentTypeEnum.DOCUMENT.value)
-                for text in texts
-            ]
+            
+            # Limit concurrency for embedding requests to avoid quota issues
+            sem = asyncio.Semaphore(8)
+            async def embed_with_limit(t):
+                async with sem:
+                    return await self.embedding_client.embed_text(text=t, document_type=DocumentTypeEnum.DOCUMENT.value)
+
+            vectors = await asyncio.gather(*[embed_with_limit(t) for t in texts])
             if not vectors or len(vectors) == 0:
                 logger.error(f"Error embedding the text of chunks of collection {collection_name} ")
                 raise
 
-            # step4: insert into vector db
             await self.vectordb_client.insert_many(
                 collection_name=collection_name,
                 texts=texts,
@@ -82,15 +86,11 @@ class RAGController(BaseController):
             logger.error(f"Error searching VDB for project {str(project.id)}: {e}")
             raise
     
-    def answer(self, project: Project, query: str, limit: int = 10):
+    async def answer(self, project: Project, query: str, limit: int = 10):
         answer, full_prompt = None, None
 
         # step1: retrieve related documents
-        retrieved_documents = self.search(
-            project=project,
-            query=query,
-            limit=limit,
-        )
+        retrieved_documents = await self.search(project=project, query=query, limit=limit,)
 
         if not retrieved_documents or len(retrieved_documents) == 0:
             logger.warning(f"No documents retrieved for RAG question answering for project {str(project.id)}")
@@ -112,8 +112,8 @@ class RAGController(BaseController):
         full_prompt = "\n\n".join([documents_prompts, footer_prompt])
 
         # step4: Retrieve the Answer
-        answer = self.generation_client.generate_text(
-            prompt=full_prompt,
+        answer = await self.generation_client.generate_text(
+            user_prompt=full_prompt,
             system_prompt=system_prompt,
             temperature=0.5
             )
