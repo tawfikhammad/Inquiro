@@ -3,7 +3,6 @@ from .base_controller import BaseController
 from utils import PDFUtils
 from fastapi import UploadFile
 from utils.enums import ResponseSignals
-from utils import PathUtils
 from utils import get_logger
 logger = get_logger(__name__)
 import os
@@ -44,8 +43,8 @@ class PaperController(BaseController):
             
             text = [reg.page_content for reg in paper_content]
             metadata =  [
-                {**reg.metadata, "project_title": project_title, "paper_name": paper_name}
-                for idx, reg in enumerate(paper_content)
+                {"project_title": project_title, "paper_name": paper_name, "page": reg.metadata['page'], "total_pages": len(paper_content)}
+                for reg in paper_content
             ]
 
             splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len)
