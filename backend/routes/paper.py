@@ -72,6 +72,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     chunks = await paper_controller.get_chunks(
         project_title=project.project_title,
         paper_name=paper.paper_name,
+        paper_path=paper_path,
         chunk_size=1000,
         chunk_overlap=150
     )
@@ -84,9 +85,9 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         Chunk(
             chunk_project_id=project.id,
             chunk_paper_id=paper.id,
-            chunk_text=chunk.page_content,
-            chunk_metadata=chunk.metadata,
-            chunk_id=i
+            chunk_text=chunk['page_content'],
+            chunk_metadata=chunk['metadata'],
+            chunk_index_in_paper=i
         ) for i, chunk in enumerate(chunks)
     ]
     chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
@@ -96,7 +97,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         status_code=status.HTTP_201_CREATED,
         content={
             "message": ResponseSignals.SUCCESS_UPLOAD.value,
-            "paper_id": _serialize_paper(paper),
+            "paper": _serialize_paper(paper),
             "inserted_chunks_count": len(chunks_ids)
         }
     )

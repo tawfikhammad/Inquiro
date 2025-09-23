@@ -8,7 +8,7 @@ class Chunk(BaseModel):
     chunk_paper_id: ObjectId
     chunk_text: str = Field(..., min_length=1)
     chunk_metadata: dict
-    chunk_id: int = Field(..., ge=0)
+    chunk_index_in_paper: int = Field(..., ge=0)
     
     class Config:
         arbitrary_types_allowed = True
