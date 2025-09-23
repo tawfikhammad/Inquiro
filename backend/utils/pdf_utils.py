@@ -5,7 +5,7 @@ class PDFUtils:
     async def get_pdf_content(file_path):
 
         try:
-            loader = PyMuPDFLoader(file_path)
+            loader = PyMuPDFLoader(file_path, extract_tables="markdown")
             documents = loader.load()
             raw_text = []
             for doc in documents:
