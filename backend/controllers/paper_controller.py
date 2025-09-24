@@ -3,6 +3,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from docling.document_converter import DocumentConverter
 from .base_controller import BaseController
 from utils.text_utils import Cleaner
+from bson import ObjectId
 from utils.enums import ResponseSignals
 from utils import get_logger
 logger = get_logger(__name__)
@@ -52,31 +53,34 @@ class PaperController(BaseController):
                 return []
             
             # Clean the text
-            cleaned_content = self.cleaner.text_cleaner(paper_content)
-            logger.info(f"Cleaned content length for paper '{paper_name}'")
-
+            paper_content = self.cleaner.text_cleaner(paper_content)
+    
             # Split content into sections based on markdown headers
             sections = []
             current_section = None
             buffer = []
 
-            for raw_line in cleaned_content.splitlines():
+            for raw_line in paper_content.splitlines():
                 # get headers
                 match = self.cleaner.HEADER_PATTERN.match(raw_line)
                 
                 if match:
+                    title = match.group(2).strip()
+                    level = len(match.group(1))
+
+                    # skip unwanted sections
+                    if self.cleaner.REMOVE_HEADER_PATTERN.match(title):
+                        current_section = None
+                        buffer.clear()
+                        continue
+
                     if current_section:
                         current_section["content"] = "".join(buffer).strip()
                         if current_section["content"]:
                             sections.append(current_section)
                         buffer.clear()
-                    
-                    level = len(match.group(1))
-                    title = match.group(2).strip()
-                    section_id = self.cleaner.title_to_id(title)
-                    
+
                     current_section = {
-                        "section_id": section_id,
                         "section_title": title,
                         "section_level": level,
                         "content": ""
@@ -99,22 +103,21 @@ class PaperController(BaseController):
 
             all_docs = []
             for section in sections:
+                section_id = str(ObjectId())    # Unique ID for the section
                 chunks = splitter.split_text(section["content"])
-                total = len(chunks)
 
                 for i, chunk in enumerate(chunks, start=1):
                     metadata = {
                         "project_title": project_title,
                         "paper_name": paper_name,
-                        "section_id": section["section_id"],
                         "section_title": section["section_title"],
                         "section_level": section["section_level"],
                         "chunk_index_in_section": i,
-                        "total_chunks_in_section": total,
                     }
                     all_docs.append({
-                        "page_content": chunk,
-                        "metadata": metadata
+                        "chunk": chunk,
+                        "chunk_section_id": section_id,
+                        "chunk_metadata": metadata
                     })
 
             return all_docs
