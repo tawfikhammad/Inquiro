@@ -1,6 +1,7 @@
 from .base_controller import BaseController
 import aiofiles
-import os, re
+import os
+import asyncio
 from utils import get_logger
 logger = get_logger(__name__)
 class SummaryController(BaseController):
@@ -8,33 +9,94 @@ class SummaryController(BaseController):
         super().__init__()
 
         self.summary_client = summary_client
-        self.template_parser = template_parser
-    
-    async def generate_summary(self, paper_text, paper_name):
+        self.template_parser = template_parser 
+
+    async def generate_summary(self, chunk_model, paper_id: str, paper_name: str):
         try:
-            logger.info("get prompts for summary generation")
+            logger.info("Starting section-based summarization pipeline")
+
             system_prompt = self.template_parser.get("summarizer", "system_prompt")
-            documents_prompts = self.template_parser.get("summarizer", "document_prompt", {"extracted_text":paper_text})
             footer_prompt = self.template_parser.get("summarizer", "footer_prompt")
 
-            full_prompt = "\n\n".join([documents_prompts, footer_prompt])
+            # Map Step (summarize each section separately)
+            section_summaries = []
+            sections = await chunk_model.get_chunks_grouped_by_section(paper_id=paper_id)
 
-            summary_content = await self.summary_client.summarize_text(
-                user_prompt=full_prompt,
-                system_prompt=system_prompt,
-                temperature=0.2
-            )
-            if not summary_content:
-                logger.warning(f"Summary generation failed for paper: {paper_name}")
+            total_sections = len(sections)
+            logger.info(f"Processing {total_sections} sections for paper {paper_name}")
+
+            for i, (section_id, section_chunks) in enumerate(sections.items(), 1):
+                try:
+                    section_title = section_chunks[0].chunk_metadata.get("section_title", f"Section {section_id}")
+                    logger.info(f"Processing section {i}/{total_sections}: {section_title}")
+
+                    section_text = "\n\n".join([c.chunk_text for c in section_chunks])
+                    section_prompt = self.template_parser.get(
+                        "summarizer", "map_prompt", {"text": section_text}
+                    )
+                    full_prompt = "\n\n".join([section_prompt, footer_prompt])
+
+                    section_summary = await self.summary_client.summarize_text(
+                        user_prompt=full_prompt,
+                        system_prompt=system_prompt,
+                        temperature=0.2,
+                    )
+                    if section_summary:
+                        section_summaries.append(
+                            f"### {section_title}\n\n{section_summary.strip()}"
+                        )
+                        logger.info(f"Successfully processed section {i}/{total_sections}: {section_title}")
+                    else:
+                        logger.warning(f"No summary generated for section: {section_title}")
+
+                    # Add delay between sections because of rate limits issue
+                    if i < total_sections:
+                        delay = 0.7  # 0.7 second delay
+                        await asyncio.sleep(delay)
+
+                except Exception as e:
+                    logger.error(f"Failed to process section {section_title}: {str(e)}")
+                    # Continue with other sections
+                    continue
+
+            logger.info(f"Completed map step for {len(section_summaries)} sections")
+
+            if not section_summaries:
+                logger.error(f"No section summaries were generated for paper {paper_name}")
                 raise
 
-            logger.info(f"Generated summary for {paper_name}")
-            return summary_content
-        
+            # Reduce Step (combine all section summaries)
+            logger.info("Starting reduce step to combine section summaries")
+            combined_sections_text = "\n\n".join(section_summaries)
+            reduce_prompt = self.template_parser.get(
+                "summarizer", "reduce_prompt", {"sections": combined_sections_text}
+            )
+            full_prompt = "\n\n".join([reduce_prompt, footer_prompt])
+
+            try:
+                final_summary = await self.summary_client.summarize_text(
+                    user_prompt=full_prompt,
+                    system_prompt=system_prompt,
+                    temperature=0.2,
+                )
+                if not final_summary:
+                    logger.error(f"Failed to generate final summary for {paper_name}")
+                    raise
+
+                logger.info(f"Successfully generated hierarchical summary for {paper_name}")
+                return final_summary
+                
+            except Exception as e:
+                logger.error(f"Failed to generate final summary for {paper_name}: {str(e)}")
+
+                # If final summary fails, return the combined section summaries as fallback
+                logger.info("Returning combined section summaries as fallback")
+                return combined_sections_text
+
         except Exception as e:
-            logger.error(f"Error generating summary for {paper_name}: {e}")
+            logger.error(f"Failed section-based summarization for {paper_name}: {e}")
             raise
-        
+                
     async def save_summary(self, summary_path, summary_content):        
         try:
             os.makedirs(os.path.dirname(summary_path), exist_ok=True)
@@ -46,13 +108,6 @@ class SummaryController(BaseController):
             raise   
             
     async def summary_path(self, project_title, paper_name):
-        cleaned_filename = f'{await self.clean_name(paper_name)}_summary'
-        summary_filename = f'{cleaned_filename}.md'
-        
+        summary_filename = f'{paper_name}_summary.md'
         summary_path = self.path_utils.get_summary_path(project_title, summary_filename)
-        return summary_path, cleaned_filename
-    
-    async def clean_name(self, filename):
-        cleaned_filename = re.sub(r"[^\w.]", "", filename)
-        cleaned_filename = os.path.splitext(cleaned_filename)[0]
-        return cleaned_filename
+        return summary_path, summary_filename.split('.')[0]

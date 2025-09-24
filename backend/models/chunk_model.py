@@ -73,6 +73,47 @@ class ChunkModel(BaseModel):
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}")
             raise
 
+    async def get_chunks_grouped_by_section(self, paper_id: str):
+        try:
+            pipeline = [
+                {"$match": {"chunk_paper_id": ObjectId(paper_id)}},
+                {"$sort": {"chunk_index_in_paper": 1}},
+                {
+                    "$group": {
+                        "_id": "$chunk_section_id",
+                        "chunks": {
+                            "$push": {
+                                "id": "$_id",
+                                "chunk_project_id": "$chunk_project_id",
+                                "chunk_paper_id": "$chunk_paper_id",
+                                "chunk_section_id": "$chunk_section_id",
+                                "chunk_text": "$chunk_text",
+                                "chunk_metadata": "$chunk_metadata",
+                                "chunk_index_in_paper": "$chunk_index_in_paper"
+                            }
+                        }
+                    }
+                },
+                {"$sort": {"_id": 1}}
+            ]
+            cursor = self.collection.aggregate(pipeline)
+
+            grouped_chunks = {}
+            async for doc in cursor:
+                section_id = str(doc["_id"])
+                chunks = [Chunk(**chunk) for chunk in doc["chunks"]]
+                grouped_chunks[section_id] = chunks
+
+            if not grouped_chunks:
+                logger.info(f"No chunks found for paper {paper_id}")
+            
+            logger.info(f"Grouped chunks by section for paper {paper_id}")
+            return grouped_chunks
+        
+        except Exception as e:
+            logger.error(f"Error grouping chunks by section for paper {paper_id}")
+            raise
+
     async def delete_chunks_by_project(self, chunks_project_id: str):
         try:
             result = await self.collection.delete_many({
