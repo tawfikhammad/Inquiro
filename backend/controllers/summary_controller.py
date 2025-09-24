@@ -1,5 +1,4 @@
 from .base_controller import BaseController
-from utils import PDFUtils
 import aiofiles
 import os, re
 from utils import get_logger
