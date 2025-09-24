@@ -6,6 +6,7 @@ class Chunk(BaseModel):
     id: Optional[ObjectId] = Field(None, alias="_id")
     chunk_project_id: ObjectId
     chunk_paper_id: ObjectId
+    chunk_section_id: ObjectId
     chunk_text: str = Field(..., min_length=1)
     chunk_metadata: dict
     chunk_index_in_paper: int = Field(..., ge=0)
@@ -25,6 +26,26 @@ class Chunk(BaseModel):
             {
                 "key": [("chunk_paper_id", 1)],
                 "name": "chunk_paper_id_index_1",
+                "unique": False
+            },
+            {
+                "key": [("chunk_section_id", 1)],
+                "name": "chunk_section_id_index_1",
+                "unique": False
+            },
+            {
+                "key": [("chunk_project_id", 1), ("chunk_paper_id", 1)],
+                "name": "chunk_project_paper_index_1_1",
+                "unique": False
+            },
+            {
+                "key": [("chunk_paper_id", 1), ("chunk_section_id", 1)],
+                "name": "chunk_paper_section_index_1_1",
+                "unique": False
+            },
+            {
+                "key": [("chunk_project_id", 1), ("chunk_paper_id", 1), ("chunk_section_id", 1)],
+                "name": "chunk_project_paper_section_index_1_1_1",
                 "unique": False
             }
         ]
