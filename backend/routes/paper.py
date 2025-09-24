@@ -6,6 +6,7 @@ from models.db_schemas import Paper, Chunk
 from utils.enums import ResponseSignals, AssetTypeEnums
 import aiofiles
 from pathlib import Path
+from bson import ObjectId
 from urllib.parse import quote
 import os
 from utils import get_settings, AppSettings
@@ -85,8 +86,9 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
         Chunk(
             chunk_project_id=project.id,
             chunk_paper_id=paper.id,
-            chunk_text=chunk['page_content'],
-            chunk_metadata=chunk['metadata'],
+            chunk_section_id=ObjectId(chunk['chunk_section_id']),
+            chunk_text=chunk['chunk'],
+            chunk_metadata=chunk['chunk_metadata'],
             chunk_index_in_paper=i
         ) for i, chunk in enumerate(chunks)
     ]
