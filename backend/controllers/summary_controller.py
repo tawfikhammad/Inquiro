@@ -48,8 +48,8 @@ class SummaryController(BaseController):
                         logger.info(f"Successfully processed section {i}/{total_sections}: {section_title}")
                     else:
                         logger.warning(f"No summary generated for section: {section_title}")
-                    
-                    # Add delay between sections to respect rate limits
+
+                    # Add delay between sections because of rate limits issue
                     if i < total_sections:
                         delay = 0.7  # 0.7 second delay
                         await asyncio.sleep(delay)

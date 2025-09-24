@@ -1,11 +1,11 @@
-import aiofiles
 from fastapi import APIRouter, status, Request, HTTPException, Body, Response
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
-from controllers import PaperController, SummaryController
+from controllers import SummaryController
 from models import ProjectModel, PaperModel, SummaryModel, ChunkModel
 from models.db_schemas import Summary
 from utils.enums import ResponseSignals, AssetTypeEnums
 from pathlib import Path
+import aiofiles
 import os
 
 from utils import get_logger 
@@ -67,14 +67,7 @@ async def create_summary(request: Request, project_id: str, paper_id: str):
             }
         )
     try:
-        paper_chunks = await chunk_model.get_paper_chunks(chunks_paper_id=paper.id)
-        if not paper_chunks or len(paper_chunks) == 0:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=ResponseSignals.NO_PAPER_CHUNKS.value
-            )
-        paper_text = "\n\n".join([chunk.chunk_text for chunk in paper_chunks])
-        summary_content = await summary_controller.generate_summary(paper_text, paper.paper_name)
+        summary_content = await summary_controller.generate_summary(chunk_model=chunk_model, paper_id=paper_id, paper_name=paper.paper_name)
         await summary_controller.save_summary(summary_path, summary_content)
 
         summary_object.summary_size = os.path.getsize(summary_path)
