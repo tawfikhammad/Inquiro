@@ -63,27 +63,73 @@ class RAGController(BaseController):
             logger.error(f"Error indexing into VDB for collection {collection_name}: {e}")
             raise
 
-    async def search(self, project: Project, query: str, limit: int = 10):
+    async def generate_mutli_queries(self, query: str, num_queries: int = 3):
         try:
-            # step1: get collection name
+            system_prompt = self.template_parser.get("rag", "multi_query_system_prompt")
+            user_prompt = self.template_parser.get("rag", "multi_query_user_prompt", {
+                "num_queries": num_queries,
+                "user_query": query
+            })
+            response = await self.generation_client.generate_text(
+                user_prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.7
+            )
+            if not response:
+                logger.error(f"Error generating multiple queries for RAG")
+                return [query]
+
+            extra_queries = [q.strip("-• \n") for q in response.split("\n") if q.strip()]
+            logger.info(f"Generated {len(extra_queries)} queries for RagFusion search: {extra_queries}")
+            return [query] + extra_queries
+        
+        except Exception as e:
+            logger.error(f"Error generating multiple queries for RAG: {e}")
+            return [query]
+
+    async def search(self, project: Project, query: str, limit: int = 10, RAGFusion: bool = True):
+        try:
             collection_name = self.create_collection_name(project_id=str(project.id))
 
-            # step2: get text embedding vector
-            vector = await self.embedding_client.embed_text(text=query, document_type=DocumentTypeEnum.QUERY.value)
-            if not vector or len(vector) == 0:
-                logger.error(f"Error embedding the query {str(project.id)}")
-                raise
+            queries = [query]
+            if RAGFusion:
+                # Generate multiple queries for RAGFusion
+                queries = await self.generate_mutli_queries(query=query, num_queries=3)
 
-            # step3: do semantic search
-            results = await self.vectordb_client.query_search(
-                collection_name=collection_name,
-                query_vector=vector,
-                limit=limit,
-                min_score=0.7,
-                return_metadata=True
-            )
-            return results
-        except Exception as e:  
+            all_results = []
+            for q in queries:
+                vector = await self.embedding_client.embed_text(text=q, document_type=DocumentTypeEnum.QUERY.value)
+                if not vector or len(vector) == 0:
+                    logger.warning(f"Error embedding query variation: {q}")
+                    continue
+
+                results = await self.vectordb_client.query_search(
+                    collection_name=collection_name,
+                    query_vector=vector,
+                    limit=limit,
+                    min_score=0.7,
+                    return_metadata=True
+                )
+                all_results.extend(results)
+            
+            if not all_results or len(all_results) == 0:
+                logger.warning(f"No results found in VDB for project {str(project.id)} with queries: {queries}")
+                return []
+            
+            # Deduplicate results based on text content, keeping the highest score
+            unique_map = {}
+            for r in all_results:
+                key = r.text.strip()
+                if key not in unique_map or r.score > unique_map[key].score:
+                    unique_map[key] = r
+
+            deduped_results = list(unique_map.values())
+
+            # Sort results by score and trim to limit
+            deduped_results.sort(key=lambda x: x.score, reverse=True)
+            return deduped_results[:limit]
+        
+        except Exception as e:
             logger.error(f"Error searching VDB for project {str(project.id)}: {e}")
             raise
     

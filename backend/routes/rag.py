@@ -114,7 +114,8 @@ async def search_index(request: Request, project_id: str, search_request: Search
     results = await rag_controller.search(
         project=project,
         query=search_request.query,
-        limit=search_request.limit
+        limit=search_request.limit,
+        RAGFusion=search_request.RAGFusion
     )
     if not results:
         return JSONResponse(
