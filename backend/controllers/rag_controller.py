@@ -33,11 +33,12 @@ class RAGController(BaseController):
         except Exception as e:
             logger.error(f"Error retrieving collection info for project {str(project.id)}: {e}")
             return None
-        
-    async def index_into_vdb(self, collection_name: str, chunks: List[Chunk], chunks_ids: List[int]):
+
+    async def index_into_vdb(self, collection_name: str, chunks: List[Chunk]):
         try:
+            ids = [str(c.id) for c in chunks]
             texts = [c.chunk_text for c in chunks]
-            metadata = [c.chunk_metadata for c in chunks]
+            metadatas = [c.chunk_metadata for c in chunks]
             
             # Limit concurrency for embedding requests to avoid quota issues
             sem = asyncio.Semaphore(8)
@@ -52,10 +53,10 @@ class RAGController(BaseController):
 
             await self.vectordb_client.insert_many(
                 collection_name=collection_name,
+                record_ids=ids,
                 texts=texts,
-                metadata=metadata,
+                metadatas=metadatas,
                 vectors=vectors,
-                record_ids=chunks_ids,
             )
 
         except Exception as e:

@@ -98,7 +98,7 @@ class QdrantProvider(VectorDBInterface):
         self,
         collection_name: str,
         texts: List[str],
-        metadata: Optional[List[Dict]] = None,
+        metadatas: Optional[List[Dict]] = None,
         vectors: List[List[float]] = None,
         record_ids: Optional[List[str]] = None,
         batch_size: int = 50,
@@ -107,20 +107,21 @@ class QdrantProvider(VectorDBInterface):
             logger.error(f"Collection '{collection_name}' does not exist.")
             raise
 
+        # use the same ids in mongodb or generate new ones
         record_ids = record_ids or [str(uuid.uuid4()) for _ in range(len(texts))]
-        metadata = metadata or [{} for _ in range(len(texts))]
+        metadatas = metadatas or [{} for _ in range(len(texts))]
 
         try:
             for i in range(0, len(texts), batch_size):
                 batch_points = []
                 for j in range(i, min(i + batch_size, len(texts))):
-                    payload = {"text": texts[j], **metadata[j]}
+                    payload = {"text": texts[j], **metadatas[j]}
 
                     point = models.PointStruct(
                         id=record_ids[j],
                         vector=vectors[j],
-                        payload=payload)
-
+                        payload=payload
+                    )
                     batch_points.append(point)
 
                 await self.client.upsert(
