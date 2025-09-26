@@ -63,6 +63,33 @@ class RAGController(BaseController):
             logger.error(f"Error indexing into VDB for collection {collection_name}: {e}")
             raise
 
+    async def generate_mutli_queries(self, query: str, num_queries: int = 3):
+        try:
+            queries = [query]
+
+            system_prompt = self.template_parser.get("rag", "multi_query_system_prompt")
+            user_prompt = self.template_parser.get("rag", "multi_query_user_prompt", {
+                "num_queries": num_queries,
+                "user_query": query
+            })
+            response = await self.generation_client.generate_text(
+                user_prompt=user_prompt,
+                system_prompt=system_prompt,
+                temperature=0.7
+            )
+            if not response:
+                logger.error(f"Error generating multiple queries for RAG")
+                return [query]
+
+            extra_queries = [q.strip("-• \n") for q in response.split("\n") if q.strip()]
+            queries = [query] + extra_queries
+            logger.info(f"Generated {len(queries)} queries for RagFusion search: {queries}")
+            return queries
+        
+        except Exception as e:
+            logger.error(f"Error generating multiple queries for RAG: {e}")
+            return [query]
+
     async def search(self, project: Project, query: str, limit: int = 10):
         try:
             # step1: get collection name
