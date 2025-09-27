@@ -1,10 +1,12 @@
 # 🧠 Inquiro — Research Assistant API
 
-**Inquiro** is an intelligent research assistant built with **FastAPI**, designed to simplify the management, summarization, and understanding of academic papers. With seamless integration of **LLMs** (OpenAI, Cohere, Gemini) and **vector databases** (Qdrant), Inquiro allows you to:
+**Inquiro** is an intelligent research assistant built with **FastAPI**, designed to simplify the management, summarization, and understanding of academic papers. With seamless integration of **LLMs** (Gemini) and **vector databases** (Qdrant), Inquiro allows you to:
 
 - Upload and organize research papers by project
 - Automatically generate intelligent summaries
-- Chat with the paper content for deeper understanding
+- Chat with the collection of papers content for deeper understanding
+- Translate or explain selection text in paper.
+- Facilitate notes taking.
 - Manage data with MongoDB and Qdrant
 
 ---
@@ -16,6 +18,7 @@
 - **Paper Chat**: Ask questions and receive answers from paper content.
 - **Markdown Editing**: View, edit, and update summaries in `.md` format.
 - **Modular Architecture**: Clean separation of routes, controllers, models.
+- **Translator**: Translate the selection text.
 - **MongoDB Integration**: Store project, paper, and summary metadata.
 - **Qdrant Vector DB**: Efficient document embedding and retrieval.
 
@@ -29,10 +32,9 @@ backend/
 ├── controllers/ # Business logic
 ├── models/ # DB models and schemas
 ├── AI/
-│ ├── LLM/ # LLM providers (OpenAI, Cohere, Gemini)
+│ ├── LLM/ # LLM providers (Gemini)
 │ └── VectorDB/ # Vector DB (Qdrant)
 ├── utils/ # Utilities for PDFs, paths, enums
-├── assets/ # Uploaded PDFs and summaries
 └── config/ # App settings and environment
 ```
 
