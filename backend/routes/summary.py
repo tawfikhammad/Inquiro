@@ -96,7 +96,7 @@ async def list_summaries(request: Request, project_id: str):
     logger.info(f"List summaries request received for project_id: {project_id}")
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summaries = await summary_model.get_summaries_by_project(summaries_project_id=project_id)
+    summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -105,11 +105,11 @@ async def list_summaries(request: Request, project_id: str):
 
 # Get a summary by project
 @summary_router.get("/{summary_id}")      
-async def get_summary(request: Request, project_id: str, summary_id: str):
-    logger.info(f"Get summary request received for project_id: {project_id} and summary_id: {summary_id}")
+async def get_summary(request: Request, project_id: str, paper_id: str, summary_id: str):
+    logger.info(f"Get summary request received for project_id: {project_id}, paper_id: {paper_id} and summary_id: {summary_id}")
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summary = await summary_model.get_summary_by_project(summary_project_id=project_id, summary_id=summary_id)
+    summary = await summary_model.get_paper_summary(summary_project_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
@@ -131,41 +131,33 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
+        logger.warning(f"Project not found with ID: {project_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
-    if not paper:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
-        )
 
     summary_controller = SummaryController(
             summary_client=request.app.summary_client,
             template_parser=request.app.template_parser
     )
     summary_path, _ = await summary_controller.summary_path(project.project_title, paper.paper_name)
-    
-    summary = await summary_model.get_summary_by_project(summary_project_id=project_id, summary_id=summary_id)
+
+    summary = await summary_model.get_paper_summary(summary_project_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
     if not summary:
-        # Clean orphan file if exists
+        # Clean file if exists
         if Path(summary_path).exists():
             Path(summary_path).unlink()
-            logger.warning(f"Deleted orphan summary file at {summary_path}")
+            logger.warning(f"Deleted summary file at {summary_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.SUMMARY_NOT_FOUND.value
         )
 
     # Delete from DB
-    result = await summary_model.delete_summary_by_project(project_summary_id=project_id, summary_id=summary.id)
-    if result == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.SUMMARY_NOT_FOUND.value
-        )
+    await summary_model.delete_paper_summary(project_summary_id=project_id, summary_paper_id=paper_id, summary_id=summary.id)
+
     # Delete file
     if Path(summary_path).exists():
         Path(summary_path).unlink()
@@ -193,7 +185,7 @@ async def serve_summary_file(request: Request, project_id: str, paper_id: str, s
             detail=ResponseSignals.PAPER_NOT_FOUND.value
         )
     # if summary exists in db
-    summary = await summary_model.get_summary_by_project(summary_project_id=project_id, summary_id=summary_id)
+    summary = await summary_model.get_paper_summary(summary_project_id=project_id, summary_paper_id=paper_id, summary_paper_id=paper_id, summary_id=summary_id)
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -210,7 +202,7 @@ async def serve_summary_file(request: Request, project_id: str, paper_id: str, s
         logger.error(f"Summary file not found at {summary_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.FILE_NOT_FOUND.value
+            detail=ResponseSignals.SUMMARY_NOT_FOUND.value
         )
     try:
         def iter_file(path, chunk_size=1024*1024):
@@ -250,7 +242,7 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PAPER_NOT_FOUND.value
         )
-    summary = await summary_model.get_summary_by_project(summary_project_id=project_id, summary_id=summary_id)
+    summary = await summary_model.get_paper_summary(summary_project_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

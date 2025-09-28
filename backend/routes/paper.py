@@ -108,7 +108,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
 @paper_router.get("/")
 async def list_papers(request: Request, project_id: str):
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
-    papers = await paper_model.get_papers_by_project(papers_project_id=project_id)
+    papers = await paper_model.get_project_papers(papers_project_id=project_id)
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -119,7 +119,7 @@ async def list_papers(request: Request, project_id: str):
 @paper_router.get("/{paper_id}")
 async def get_paper(request: Request, project_id: str, paper_id: str):
     paper_model = await PaperModel.get_instance(db_client= request.app.mongodb_client)
-    paper = await paper_model.get_paper_by_id(paper_project_id= project_id, paper_id= paper_id)
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
     if not paper:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
@@ -144,30 +144,20 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
         )
     paper_controller = PaperController()
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
-    paper_path, paper_name = await paper_controller.paper_path(project.project_title, paper.paper_name)
+    paper_path, _ = await paper_controller.paper_path(project.project_title, paper.paper_name)
     if not paper:
-         # Clean orphan file if exists
+         # Clean file if exists
         if Path(paper_path).exists():
             Path(paper_path).unlink()
-            logger.warning(f"Deleted orphan paper file at {paper_path}")
+            logger.warning(f"Deleted paper file at {paper_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PAPER_NOT_FOUND.value
         )
 
-    # Delete the paper file from db
-    result = await paper_model.delete_paper_by_project(paper_project_id= project_id ,paper_id= paper_id)
-    if result == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
-    )
-    # Delete all chunks associated with the paper
-    result = await chunk_model.delete_chunks_by_paper(chunks_project_id=project_id, chunks_paper_id=paper_id)
-    if result==0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.NO_PAPER_CHUNKS.value)
+    # Delete the paper from db and its chunks
+    await paper_model.delete_paper(paper_project_id=project_id, paper_id=paper_id)
+    await chunk_model.delete_paper_chunks(chunks_project_id=project_id, chunks_paper_id=paper_id)
 
     # Delete the paper file from the filesystem
     if Path(paper_path).exists():

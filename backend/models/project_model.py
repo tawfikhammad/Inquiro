@@ -81,10 +81,8 @@ class ProjectModel(BaseModel):
             result = await self.collection.delete_many({})
             if result.deleted_count == 0:
                 logger.warning("No projects found to delete.")
-                return 0
             
             logger.info(f"All projects deleted successfully. Count: {result.deleted_count}")
-            return result.deleted_count
         except Exception as e:
             logger.error(f"Error deleting all projects: {e}")
             raise
@@ -92,13 +90,8 @@ class ProjectModel(BaseModel):
     async def delete_project(self, project_id: str):
         """Delete a project by its ID"""
         try:
-            result = await self.collection.delete_one({"_id": ObjectId(project_id)})
-            if result.deleted_count == 0:
-                logger.warning(f"Project not found for deletion: {project_id}")
-                return 0
-            
+            await self.collection.delete_one({"_id": ObjectId(project_id)})
             logger.info(f"Project {project_id} deleted successfully.")
-            return result.deleted_count
         except Exception as e:
             logger.error(f"Error deleting project {project_id}: {e}")
             raise
