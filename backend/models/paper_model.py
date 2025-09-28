@@ -44,17 +44,6 @@ class PaperModel(BaseModel):
             logger.error(f"Error retrieving paper '{paper_name}' for project '{paper_project_id}'")
             raise
 
-    async def get_or_create_paper(self, Paper: Paper) -> Paper:
-        try:
-            paper = await self.get_paper_by_name(Paper.paper_project_id, Paper.paper_name)
-            if not paper:
-                paper = await self.create_paper(Paper)
-                return paper
-            return paper
-        except Exception as e:
-            logger.error(f"Error in get_or_create_paper for {Paper.paper_name}: {e}")
-            raise
-    
     async def get_paper_by_id(self, paper_project_id: str, paper_id: str):
         try:
             record = await self.collection.find_one(
@@ -69,7 +58,18 @@ class PaperModel(BaseModel):
             logger.error(f"Error retrieving paper by ID '{paper_id}' for project '{paper_project_id}'")
             raise
 
-    async def get_papers_by_project(self, papers_project_id: str):
+    async def get_or_create_paper(self, Paper: Paper) -> Paper:
+        try:
+            paper = await self.get_paper_by_name(Paper.paper_project_id, Paper.paper_name)
+            if not paper:
+                paper = await self.create_paper(Paper)
+                return paper
+            return paper
+        except Exception as e:
+            logger.error(f"Error in get_or_create_paper for {Paper.paper_name}: {e}")
+            raise
+
+    async def get_project_papers(self, papers_project_id: str):
         try:    
             query = {"paper_project_id": ObjectId(papers_project_id)}
             records = await self.collection.find(query).to_list(length=None)
@@ -81,17 +81,35 @@ class PaperModel(BaseModel):
         except Exception as e:
             logger.error(f"Error fetching papers for project {papers_project_id}: {e}")
             raise
-        
-    async def delete_paper_by_project(self, paper_project_id:str, paper_id: str):
+
+    async def delete_all_papers(self):
         try:
-            result = await self.collection.delete_one(
+            result = await self.collection.delete_many({})
+            if result.deleted_count == 0:
+                logger.warning("No papers found to delete.")
+            
+            logger.info(f"All papers deleted successfully. Count: {result.deleted_count}")
+        except Exception as e:
+            logger.error(f"Error deleting all papers: {e}")
+            raise
+
+    async def delete_project_papers(self, papers_project_id: str):
+        try:
+            result = await self.collection.delete_many({"paper_project_id": ObjectId(papers_project_id)})
+            if result.deleted_count == 0:
+                logger.warning(f"No papers found to delete for project {papers_project_id}.")
+                
+            logger.info(f"Deleted {result.deleted_count} papers from project {papers_project_id}.")
+        except Exception as e:
+            logger.error(f"Error deleting papers for project {papers_project_id}: {e}")
+            raise
+
+    async def delete_paper(self, paper_project_id:str, paper_id: str):
+        try:
+            await self.collection.delete_one(
                 {"paper_project_id": ObjectId(paper_project_id),
                 "_id": ObjectId(paper_id)}
             )
-            if result.deleted_count == 0:
-                logger.warning(f"Paper not found for deletion with ID: {paper_id} in project {paper_project_id}")
-                return 0
-            return result.deleted_count
         except Exception as e:
             logger.error(f"Error deleting paper {paper_id} from project {paper_project_id}: {e}")
             raise
