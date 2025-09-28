@@ -1,6 +1,6 @@
-from fastapi import APIRouter, File, Depends, status, Request, HTTPException, Response
+from fastapi import APIRouter, status, Request, HTTPException, Response
 from fastapi.responses import JSONResponse
-from models import ProjectModel, PaperModel, SummaryModel
+from models import ProjectModel, PaperModel, ChunkModel, SummaryModel
 from models.db_schemas import Project
 from .schema import ProjectRequest
 from utils.enums import ResponseSignals
@@ -77,12 +77,16 @@ async def delete_all(request: Request):
     logger.info("Incoming request to delete all projects.")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
-    deleted_count = await project_model.delete_all_projects()
-    if deleted_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=ResponseSignals.PROJECT_NOT_FOUND.value
-        )
+    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
+    summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
+
+    await project_model.delete_all_projects()
+    await paper_model.delete_all_papers()
+    await chunk_model.delete_all_chunks()
+    await summary_model.delete_all_summaries()
+    
+    
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Delete a project.
@@ -91,12 +95,22 @@ async def delete_project(request: Request, project_id: str):
     logger.info(f"Incoming request to delete project by ID: {project_id}")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
-    deleted_count = await project_model.delete_project(project_id=project_id)
-    if deleted_count == 0:
+    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
+    summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
+
+    project = await project_model.get_project_by_id(project_id=project_id)
+    if not project:
+        logger.warning(f"Project not found for deletion: {project_id}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
+    await project_model.delete_project(project_id=project_id)
+    await paper_model.delete_project_papers(papers_project_id=project_id)
+    await chunk_model.delete_project_chunks(chunks_project_id=project_id)
+    await summary_model.delete_project_summaries(summaries_project_id=project_id)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # List all assets (papers and summaries) in a project.
@@ -111,10 +125,10 @@ async def get_project_assets(request: Request, project_id: str):
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
-    papers = await paper_model.get_papers_by_project(papers_project_id=project_id)
+    papers = await paper_model.get_project_papers(papers_project_id=project_id)
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summaries = await summary_model.get_summaries_by_project(summaries_project_id=project_id)
+    summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
     
     papers_response = [paper.dict(by_alias=True, exclude_unset=True) for paper in papers]
     summaries_response = [summary.dict(by_alias=True, exclude_unset=True) for summary in summaries]
