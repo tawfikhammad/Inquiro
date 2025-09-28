@@ -61,6 +61,28 @@ class QdrantProvider(VectorDBInterface):
             await self.delete_collection(collection.name)
         logger.info("All collections deleted.")
 
+    async def delete_paper_embeddings(self, collection_name: str, paper_id: str):
+        '''Delete all chunks embeddings related to a specific paper in a collection'''
+        if await self.client.collection_exists(collection_name):
+            try:
+                await self.client.delete(
+                    collection_name=collection_name,
+                    filter=models.Filter(
+                        must=[
+                            models.FieldCondition(
+                                key="paper_id",
+                                match=models.MatchValue(value=paper_id)
+                            )
+                        ]
+                    )
+                )
+                logger.info(f"Deleted embeddings for paper_id '{paper_id}' in collection '{collection_name}'.")
+            except Exception as e:
+                logger.error(f"Error deleting embeddings for paper_id '{paper_id}' in collection '{collection_name}': {e}")
+                raise
+        else:
+            logger.warning(f"Collection '{collection_name}' does not exist.")
+
     async def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool = False):
         try:
             if do_reset:
@@ -81,51 +103,60 @@ class QdrantProvider(VectorDBInterface):
             logger.error(f"Error during create collection with name {collection_name}")
             raise
 
-    async def insert_one(self, collection_name:str, text:str, vector:list, record_id:int = None):
+    async def insert_one(
+        self,
+        collection_name: str,
+        chunk_id: str,
+        text: str,
+        vector: List[float],
+        paper_id: str = None,
+        metadata: Optional[Dict] = None
+    ):
 
-        if await self.client.collection_exists(collection_name):
-            try:
-                await self.client.upsert(
-                    collection_name=collection_name,
-                    points=[
-                        models.PointStruct(
-                        id= record_id,
-                        vector= vector, 
-                        payload= {"text": text}
-                )])
-                logger.info(f"Inserted one document into collection '{collection_name}'.")
+        if not await self.client.collection_exists(collection_name):
+            logger.error(f"Collection '{collection_name}' does not exist.")
+            raise
+        try:
+            await self.client.upsert(
+                collection_name=collection_name,
+                points=[
+                    models.PointStruct(
+                        id=chunk_id,
+                        vector=vector,
+                        payload={"text": text, "paper_id": paper_id, **(metadata or {})}
+                    )
+                ]
+            )
+            logger.info(f"Inserted one document into collection '{collection_name}'.")
 
-            except Exception as e:
-                logger.error(f"Error inserting document into collection '{collection_name}': {e}")
-                return False
-        else:
-            logger.warning(f"Collection '{collection_name}' does not exist. Cannot insert document.")
+        except Exception as e:
+            logger.error(f"Error inserting document into collection '{collection_name}': {e}")
+            return False
 
     async def insert_many(
         self,
         collection_name: str,
+        chunk_ids: List[str],
         texts: List[str],
+        vectors: List[List[float]],
+        paper_ids: List[str] = None,
         metadatas: Optional[List[Dict]] = None,
-        vectors: List[List[float]] = None,
-        record_ids: Optional[List[str]] = None,
         batch_size: int = 50,
-    ) -> bool:
+    ):
         if not await self.client.collection_exists(collection_name):
             logger.error(f"Collection '{collection_name}' does not exist.")
             raise
 
-        # use the same ids in mongodb or generate new ones
-        record_ids = record_ids or [str(uuid.uuid4()) for _ in range(len(texts))]
         metadatas = metadatas or [{} for _ in range(len(texts))]
 
         try:
             for i in range(0, len(texts), batch_size):
                 batch_points = []
                 for j in range(i, min(i + batch_size, len(texts))):
-                    payload = {"text": texts[j], **metadatas[j]}
+                    payload = {"text": texts[j], "paper_id": paper_ids[j], **metadatas[j]}
 
                     point = models.PointStruct(
-                        id=record_ids[j],
+                        id=chunk_ids[j],
                         vector=vectors[j],
                         payload=payload
                     )
