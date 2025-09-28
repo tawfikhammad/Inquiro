@@ -20,10 +20,6 @@ class RAGController(BaseController):
     def create_collection_name(self, project_id: str):
         return f"collection_{project_id}".strip()
     
-    def reset_vdb_collection(self, project: Project):
-        collection_name = self.create_collection_name(project_id=str(project.id))
-        return self.vectordb_client.delete_collection(collection_name=collection_name)
-    
     async def get_vdb_collection_info(self, project: Project):
         try:
             collection_name = self.create_collection_name(project_id=str(project.id))
@@ -36,7 +32,8 @@ class RAGController(BaseController):
 
     async def index_into_vdb(self, collection_name: str, chunks: List[Chunk]):
         try:
-            ids = [str(c.id) for c in chunks]
+            chunk_ids = [str(c.id) for c in chunks]
+            paper_ids = [str(c.chunk_paper_id) for c in chunks]
             texts = [c.chunk_text for c in chunks]
             metadatas = [c.chunk_metadata for c in chunks]
             
@@ -53,7 +50,8 @@ class RAGController(BaseController):
 
             await self.vectordb_client.insert_many(
                 collection_name=collection_name,
-                record_ids=ids,
+                chunk_ids=chunk_ids,
+                paper_ids=paper_ids,
                 texts=texts,
                 metadatas=metadatas,
                 vectors=vectors,
