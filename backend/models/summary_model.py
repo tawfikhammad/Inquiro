@@ -68,11 +68,12 @@ class SummaryModel(BaseModel):
         except Exception as e:
             logger.error(f"Error updating summary in DB: {e}")
             raise
-    
-    async def get_summary_by_project(self, summary_project_id: str, summary_id: str):
+
+    async def get_paper_summary(self, summary_project_id: str, summary_paper_id: str, summary_id: str):
         try:
             record = await self.collection.find_one(
                 {"summary_project_id": ObjectId(summary_project_id),
+                "summary_paper_id": ObjectId(summary_paper_id),
                 "_id": ObjectId(summary_id)}
             )
             if not record:
@@ -83,7 +84,7 @@ class SummaryModel(BaseModel):
             logger.error(f"Error retrieving summary '{summary_id}' for project '{summary_project_id}': {e}")
             raise
 
-    async def get_summaries_by_project(self, summaries_project_id: str, summary_type: str = None):
+    async def get_project_summaries(self, summaries_project_id: str, summary_type: str = None):
         try:    
             query = {"summary_project_id": ObjectId(summaries_project_id)}
             if summary_type:
@@ -98,17 +99,39 @@ class SummaryModel(BaseModel):
         except Exception as e:
             logger.error(f"Error retrieving summaries for project '{summaries_project_id}' : {e}")
             raise
-    
-    async def delete_summary_by_project(self, summary_project_id: str, summary_id: str):
+
+    async def delete_paper_summary(self, summary_project_id: str, summary_paper_id: str, summary_id: str):
         try:
             result = await self.collection.delete_one(
                 {"summary_project_id": ObjectId(summary_project_id),
+                "summary_paper_id": ObjectId(summary_paper_id),
                 "_id": ObjectId(summary_id)}
             )
             if result.deleted_count == 0:
                 logger.warning(f"Summary not found for deletion with ID: {summary_id} in project {summary_project_id}")
-                return 0
-            return result.deleted_count
+            
+            logger.info(f"Summary {summary_id} deleted successfully from project {summary_project_id}") 
         except Exception as e:
             logger.error(f"Error deleting summary {summary_id} from project {summary_project_id}: {e}")
+            raise
+
+    async def delete_project_summaries(self, summaries_project_id: str):
+        try:
+            result = await self.collection.delete_many({"summary_project_id": ObjectId(summaries_project_id)})
+            if result.deleted_count == 0:
+                logger.warning(f"No summaries found to delete for project {summaries_project_id}.")
+
+            logger.info(f"Deleted {result.deleted_count} summaries from project {summaries_project_id}.")
+        except Exception as e:
+            logger.error(f"Error deleting summaries for project {summaries_project_id}: {e}")
+            raise
+
+    async def delete_all_summaries(self):
+        try:
+            result = await self.collection.delete_many({})
+            if result.deleted_count == 0:
+                logger.warning("No summaries found to delete.")
+            logger.info(f"All summaries deleted successfully. Count: {result.deleted_count}")
+        except Exception as e:
+            logger.error(f"Error deleting all summaries: {e}")
             raise
