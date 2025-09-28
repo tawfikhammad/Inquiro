@@ -70,7 +70,7 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             paper_size=os.path.getsize(paper_path)
         )
     )
-    chunks = await paper_controller.get_chunks(
+    chunks = await paper_controller.create_chunks(
         project_title=project.project_title,
         paper_name=paper.paper_name,
         paper_path=paper_path,
@@ -159,6 +159,11 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
     await paper_model.delete_paper(paper_project_id=project_id, paper_id=paper_id)
     await chunk_model.delete_paper_chunks(chunks_project_id=project_id, chunks_paper_id=paper_id)
 
+    # Delete the paper embeddings from the vector database
+    collection_name = f"collection_{project_id}".strip()
+    await request.app.qdrant_provider.delete_paper_embeddings(collection_name=collection_name, paper_id=paper_id)
+    logger.info(f"Deleted paper and associated chunks and embeddings: {paper_id}")
+    
     # Delete the paper file from the filesystem
     if Path(paper_path).exists():
         Path(paper_path).unlink()
@@ -190,7 +195,7 @@ async def serve_paper_file(request: Request, project_id: str, paper_id: str):
         logger.error(f"Paper file not found at {paper_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.FILE_NOT_FOUND.value
+            detail=ResponseSignals.PAPER_FILE_NOT_FOUND.value
         )
     try:
         async def iter_file(path, chunk_size=1024*1024):

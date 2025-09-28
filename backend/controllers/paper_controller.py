@@ -38,7 +38,7 @@ class PaperController(BaseController):
         md_text = doc.export_to_markdown()
         return md_text
 
-    async def get_chunks(self, project_title: str, paper_name: str, paper_path: str, chunk_size: int=500, chunk_overlap: int=75):
+    async def create_chunks(self, project_title: str, paper_name: str, paper_path: str, chunk_size: int=500, chunk_overlap: int=75):
         """Generate text chunks from the PDF content.
         - Extract text from PDF
         - Clean the text

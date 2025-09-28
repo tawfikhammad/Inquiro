@@ -61,7 +61,7 @@ app.include_router(welcome.welcome_router, prefix="", tags=["welcome"])
 app.include_router(projects.project_router, prefix="/projects", tags=["projects"])
 app.include_router(paper.paper_router, prefix="/projects/{project_id}/papers", tags=["papers"])
 app.include_router(summary.summary_router, prefix="/projects/{project_id}/papers/{paper_id}/summaries", tags=["summaries"])
-app.include_router(rag.rag_router, prefix="/projects/{project_id}/papers/{paper_id}", tags=["chat"])
+app.include_router(rag.rag_router, prefix="/projects/{project_id}", tags=["chat"])
 
 
 if __name__ == "__main__":

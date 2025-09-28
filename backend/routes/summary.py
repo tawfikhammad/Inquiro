@@ -259,7 +259,7 @@ async def update_summary_file(request: Request, project_id: str, paper_id: str, 
         logger.error(f"Summary file not found at: {summary_path}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.SUMMARY_NOT_FOUND.value
+            detail=ResponseSignals.SUMMARY_FILE_NOT_FOUND.value
         )
     try:
         async with aiofiles.open(summary_path, 'w', encoding='utf-8') as f:
