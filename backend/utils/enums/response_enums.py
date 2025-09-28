@@ -9,6 +9,8 @@ class ResponseSignals(Enum):
     INVALID_FILE_TYPE = 'Invalid File Type'
     INVALID_FILE_SIZE = 'File Size Too Large'
     VALID_FILE = 'Valid File'
+    PAPER_FILE_NOT_FOUND = 'Paper File Not Found'
+    SUMMARY_FILE_NOT_FOUND = 'Summary File Not Found'
 
     # Paper Responses
     PAPER_NOT_FOUND = "Paper Not Found"
