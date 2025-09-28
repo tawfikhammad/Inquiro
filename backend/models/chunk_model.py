@@ -66,34 +66,44 @@ class ChunkModel(BaseModel):
     async def get_paper_chunks(self, chunks_paper_id: str):
         try:
             records = await self.collection.find({
-                        "chunk_paper_id": ObjectId(chunks_paper_id)
+                    "chunk_paper_id": ObjectId(chunks_paper_id)
                 }).to_list(length=None)
             return [Chunk(**record)for record in records]
         except Exception as e:
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}")
             raise
 
-    async def delete_chunks_by_project(self, chunks_project_id: str):
+    async def delete_project_chunks(self, chunks_project_id: str):
         try:
             result = await self.collection.delete_many({
                 "chunk_project_id": ObjectId(chunks_project_id)})
             if result.deleted_count == 0:
                 logger.warning(f"No chunks found for deletion for project {chunks_project_id}")
-                return 0
-            return result.deleted_count
+            
+            logger.info(f"Deleted {result.deleted_count} chunks for project {chunks_project_id}")
         except Exception as e:
             logger.error(f"Error deleting chunks for project {chunks_project_id}")
             raise
 
-    async def delete_chunks_by_paper(self, chunks_project_id: str, chunks_paper_id: str):
+    async def delete_paper_chunks(self, chunks_project_id: str, chunks_paper_id: str):
         try:
             result = await self.collection.delete_many({
                 "chunk_project_id": ObjectId(chunks_project_id),
                 "chunk_paper_id": ObjectId(chunks_paper_id)})
             if result.deleted_count == 0:
                 logger.warning(f"No chunks found for deletion for paper {chunks_paper_id} in project {chunks_project_id}")
-                return 0
-            return result.deleted_count
+
+            logger.info(f"Deleted {result.deleted_count} chunks for paper {chunks_paper_id} in project {chunks_project_id}")
         except Exception as e:
             logger.error(f"Error deleting chunks for paper {chunks_paper_id} in project {chunks_project_id}")
+            raise
+
+    async def delete_all_chunks(self):
+        try:
+            result = await self.collection.delete_many({})
+            if result.deleted_count == 0:
+                logger.warning("No chunks found to delete.")
+            logger.info(f"All chunks deleted successfully. Count: {result.deleted_count}")
+        except Exception as e:
+            logger.error(f"Error deleting all chunks: {e}")
             raise
