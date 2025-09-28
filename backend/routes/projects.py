@@ -64,7 +64,7 @@ async def get_project(request: Request, project_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
-
+    
     serialized_project = _serialize_project(project)
     return JSONResponse(
         status_code=status.HTTP_200_OK,
@@ -73,7 +73,7 @@ async def get_project(request: Request, project_id: str):
 
 # Delete all projects.
 @project_router.delete("/")
-async def delete_all(request: Request):
+async def delete_all_projects(request: Request):
     logger.info("Incoming request to delete all projects.")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
@@ -81,12 +81,16 @@ async def delete_all(request: Request):
     chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
 
+    # Delete all projects, papers, chunks, and summaries
     await project_model.delete_all_projects()
     await paper_model.delete_all_papers()
     await chunk_model.delete_all_chunks()
     await summary_model.delete_all_summaries()
-    
-    
+
+    # Delete all collections in the vector database
+    await request.app.vectordb_client.delete_all_collections()
+    logger.info("All projects and associated data deleted.")
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Delete a project.
@@ -106,10 +110,17 @@ async def delete_project(request: Request, project_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
+    
+    # Delete the project, its papers, chunks, and summaries
     await project_model.delete_project(project_id=project_id)
     await paper_model.delete_project_papers(papers_project_id=project_id)
     await chunk_model.delete_project_chunks(chunks_project_id=project_id)
     await summary_model.delete_project_summaries(summaries_project_id=project_id)
+
+    # Delete the corresponding collection in the vdb
+    collection_name = f"collection_{project_id}".strip()
+    await request.app.vectordb_client.delete_collection(collection_name=collection_name)
+    logger.info(f"Project and associated data deleted: {project_id}")   
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
