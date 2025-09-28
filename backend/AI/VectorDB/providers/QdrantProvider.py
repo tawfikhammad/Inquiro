@@ -48,11 +48,18 @@ class QdrantProvider(VectorDBInterface):
             return None
 
     async def delete_collection(self, collection_name):
+        '''Delete the collection = Delete all project embedding chunks'''
         if await self.client.collection_exists(collection_name):
             await self.client.delete_collection(collection_name=collection_name)
             logger.info(f"Collection '{collection_name}' deleted.")
         else:
             logger.warning(f"Collection '{collection_name}' does not exist.")
+    
+    async def delete_all_collections(self):
+        collections = await self.list_all_collections()
+        for collection in collections.collections:
+            await self.delete_collection(collection.name)
+        logger.info("All collections deleted.")
 
     async def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool = False):
         try:
