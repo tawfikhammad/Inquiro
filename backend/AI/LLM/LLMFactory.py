@@ -10,8 +10,8 @@ class LLMProviderFactory:
             return GeminiProvider(
                 api_key=self.config.GEMINI_API_KEY,
                 default_max_input_characters=self.config.DEFAULT_MAX_INPUT_CHARACTERS,
-                default_max_output_tokens=self.config.GENERATION_DEFAULT_MAX_TOKENS,
-                default_temperature=self.config.GENERATION_DEFAULT_TEMPERATURE
+                default_max_output_tokens=self.config.DEFAULT_MAX_TOKENS,
+                default_temperature=self.config.DEFAULT_TEMPERATURE
             )
 
         return None
