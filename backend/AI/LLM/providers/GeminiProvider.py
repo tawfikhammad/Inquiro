@@ -56,7 +56,7 @@ class GeminiProvider(LLMInterface):
 
             chat = self.client.aio.chats.create(model=self.generation_model_id)
             response=await chat.send_message(
-                message=await self.process_text(user_prompt),
+                message=user_prompt,
                 config=config
             )
             self.logger.info(f"Chat completion response from Gemini: {response.text}")
