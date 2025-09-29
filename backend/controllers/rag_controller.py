@@ -64,10 +64,13 @@ class RAGController(BaseController):
     async def generate_mutli_queries(self, query: str, num_queries: int = 3):
         try:
             system_prompt = self.template_parser.get("rag", "multi_query_system_prompt")
-            user_prompt = self.template_parser.get("rag", "multi_query_user_prompt", {
+            document_prompt = self.template_parser.get("rag", "multi_query_document_prompt", {
                 "num_queries": num_queries,
                 "user_query": query
             })
+            footer_prompt = self.template_parser.get("rag", "multi_query_footer_prompt") 
+            user_prompt = "\n\n".join([document_prompt, footer_prompt])
+            
             response = await self.generation_client.generate_text(
                 user_prompt=user_prompt,
                 system_prompt=system_prompt,
