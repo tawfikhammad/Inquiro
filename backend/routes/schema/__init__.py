@@ -1,1 +1,1 @@
-from .requests import ProjectRequest, PushRequest, SearchRequest, ProcessRequest
+from .requests import ProjectRequest, PushRequest, SearchRequest, ProcessRequest, TranslateRequest
