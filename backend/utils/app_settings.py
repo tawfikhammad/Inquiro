@@ -34,6 +34,9 @@ class AppSettings(BaseSettings):
 
     LANG: str
     DEFAULT_LANG: str
+
+    TRANSLATION_SUPPORTED_LANGUAGES: list[str] = ["English", "Spanish", "French", "German", "Arabic", "Italian"]
+    TRANSLATION_MAX_INPUT_CHARACTERS: int = 5000
     class Config:
         env_file = "backend/.env"  
 

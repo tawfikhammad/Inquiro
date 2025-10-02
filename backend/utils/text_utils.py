@@ -1,4 +1,5 @@
 import re, os
+#from langdetect import detect
 
 
 class Cleaner:
@@ -18,3 +19,14 @@ class Cleaner:
     def text_cleaner(self, text: str) -> str:
         text = re.sub(r'(?im)^#{1,4}\s*(references)\b.*[\s\S]*', '',text)
         return text.strip()
+
+# class TextLanguage:
+    
+#     @staticmethod
+#     def get_language(text: str) -> str:
+#         try:
+#             language = detect(text[:500])
+#             return language
+#         except Exception as e:
+#             print(f"Language detection error: {e}")
+#             return "unknown"

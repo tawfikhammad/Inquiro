@@ -17,3 +17,7 @@ class SearchRequest(BaseModel):
     query: str
     limit: Optional[int] = 5
     RAGFusion: Optional[bool] = False
+
+class TranslateRequest(BaseModel):
+    text: str
+    target_language: str

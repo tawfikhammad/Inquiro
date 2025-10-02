@@ -45,9 +45,9 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     paper_controller = PaperController()
     isvalid, message = await paper_controller.validfile(file=file)
     if not isvalid:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            content={"message": message}
+            detail=message
         )
     paper_path, paper_name = await paper_controller.paper_path(project_title=project.project_title, paper_name=file.filename)
 
