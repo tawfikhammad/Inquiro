@@ -2,13 +2,19 @@ from enum import Enum
 
 class ResponseSignals(Enum):
 
+    # Validation Responses
+    INVALID_FILE_TYPE = 'Invalid File Type'
+    INVALID_FILE_SIZE = 'File Size Too Large'
+    INVALID_TRANSLATION_LANGUAGE = 'Invalid Translation Language'
+    INVALID_EMPTY_TEXT = 'Invalid Empty Text'
+    INVALID_LONG_TEXT = 'Text Too Long'
+    VALID_FILE = 'Valid File'
+    VALID_TEXT = 'Valid Text'
+
     # General Responses
     SUCCESS_UPLOAD = 'File Uploaded Successfully'
     FAILED_UPLOAD = 'Failed to Upload File'
     FAILED_SAVING = 'Failed to save file'
-    INVALID_FILE_TYPE = 'Invalid File Type'
-    INVALID_FILE_SIZE = 'File Size Too Large'
-    VALID_FILE = 'Valid File'
     PAPER_FILE_NOT_FOUND = 'Paper File Not Found'
     SUMMARY_FILE_NOT_FOUND = 'Summary File Not Found'
 
@@ -50,3 +56,7 @@ class ResponseSignals(Enum):
     SUMMARY_EXISTS = 'Summary Already Exists'
     SUMMARY_DISPLAY_ERROR = 'Failed to Display Summary'
     SUMMARY_UPDATE_ERROR = 'Failed to Update Summary'
+
+    # Translator Responses
+    TRANSLATION_SUCCESS = 'Text Translated Successfully'
+    TRANSLATION_ERROR = 'Failed to Translate Text'
