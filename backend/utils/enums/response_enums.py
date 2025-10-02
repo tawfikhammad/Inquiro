@@ -60,3 +60,7 @@ class ResponseSignals(Enum):
     # Translator Responses
     TRANSLATION_SUCCESS = 'Text Translated Successfully'
     TRANSLATION_ERROR = 'Failed to Translate Text'
+
+    # Explanation Responses
+    EXPLANATION_SUCCESS = 'Text Explained Successfully'
+    EXPLANATION_ERROR = 'Failed to Explain Text'
