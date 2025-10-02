@@ -14,7 +14,7 @@ class ExplainController(BaseController):
             
             if context:
                 document_prompt = self.template_parser.get(
-                    "explainer", "document_prompt", {"text": text, "context": context}
+                    "explainer", "document_prompt_with_context", {"text": text, "context": context}
                 )
             else:
                 document_prompt = self.template_parser.get(
