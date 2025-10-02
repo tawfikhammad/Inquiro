@@ -1,1 +1,2 @@
-from .requests import ProjectRequest, PushRequest, SearchRequest, ProcessRequest, TranslateRequest
+from .requests import (ProcessRequest, ProjectRequest, PushRequest, SearchRequest,
+                       TranslateRequest, ExplainRequest)

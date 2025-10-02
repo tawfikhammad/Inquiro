@@ -21,3 +21,7 @@ class SearchRequest(BaseModel):
 class TranslateRequest(BaseModel):
     text: str
     target_language: str
+
+class ExplainRequest(BaseModel):
+    text: str
+    context : str = None
