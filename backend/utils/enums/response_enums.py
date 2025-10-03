@@ -43,6 +43,7 @@ class ResponseSignals(Enum):
     VDB_SEARCH_SUCCESS = 'Vector DB Search Successful'
     VDB_NO_SEARCH_RESULTS = 'No Results Found in Vector DB'
     VDB_UNSUPPORTED_PROVIDER = 'Unsupported Vector DB Provider'
+    VDB_COLLECTION_NOT_FOUND = 'Vector DB Collection Not Found'
 
     #RAG Responses
     RAG_ANSWER_ERROR = 'Failed to Generate Answer'
