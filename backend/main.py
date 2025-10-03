@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from routes import welcome, paper, projects, rag, summary, translator
+from routes import welcome, paper, projects, rag, summary, translator, explainer
 from utils import get_settings, get_logger
 logger = get_logger(__name__)
 
@@ -63,7 +63,7 @@ app.include_router(paper.paper_router, prefix="/projects/{project_id}/papers", t
 app.include_router(summary.summary_router, prefix="/projects/{project_id}/papers/{paper_id}/summaries", tags=["summaries"])
 app.include_router(rag.rag_router, prefix="/projects/{project_id}", tags=["chat"])
 app.include_router(translator.translator_router, prefix="/translator", tags=["translator"])
-
+app.include_router(explainer.explainer_router, prefix="/explainer", tags=["explainer"])
 
 if __name__ == "__main__":
     import uvicorn
