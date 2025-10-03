@@ -20,6 +20,7 @@ async def explain_text(request: Request, explain_request: ExplainRequest):
 
         explanation = await explain_controller.explain_text(
             text=explain_request.text,
+            context=explain_request.context,
         )
 
         return JSONResponse(
