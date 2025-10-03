@@ -24,11 +24,12 @@ class RAGController(BaseController):
         try:
             collection_name = self.create_collection_name(project_id=str(project.id))
             collection_info = await self.vectordb_client.get_collection_info(collection_name=collection_name)
-
+            if not collection_info:
+                return None
             return json.loads(json.dumps(collection_info, default=lambda x: x.__dict__))
         except Exception as e:
             logger.error(f"Error retrieving collection info for project {str(project.id)}: {e}")
-            return None
+            raise
 
     async def index_into_vdb(self, collection_name: str, chunks: List[Chunk]):
         try:
@@ -46,7 +47,7 @@ class RAGController(BaseController):
             vectors = await asyncio.gather(*[embed_with_limit(t) for t in texts])
             if not vectors or len(vectors) == 0:
                 logger.error(f"Error embedding the text of chunks of collection {collection_name} ")
-                raise
+                return
 
             await self.vectordb_client.insert_many(
                 collection_name=collection_name,
@@ -111,6 +112,7 @@ class RAGController(BaseController):
                     min_score=0.7,
                     return_metadata=True
                 )
+                logger.info(f"VDB search returned {len(results)} results for query variation: {q}")
                 all_results.extend(results)
             
             if not all_results or len(all_results) == 0:
@@ -134,40 +136,38 @@ class RAGController(BaseController):
             logger.error(f"Error searching VDB for project {str(project.id)}: {e}")
             raise
     
-    async def answer(self, project: Project, query: str, limit: int = 10):
-        answer, full_prompt = None, None
+    async def answer(self, project: Project, query: str, limit: int = 10, RAGFusion: bool = True):
+        try:
 
-        # step1: retrieve related documents
-        retrieved_documents = await self.search(project=project, query=query, limit=limit,)
+            # Retrieve related documents
+            retrieved_documents = await self.search(project=project, query=query, limit=limit, RAGFusion=RAGFusion)        
+            
+            # Construct LLM prompt
+            system_prompt = self.template_parser.get("rag", "system_prompt")
+            documents_prompts = "\n".join([
+                self.template_parser.get("rag", "document_prompt", {
+                        "doc_num": idx + 1,
+                        "chunk_text": doc.text,
+                        "chunk_metadata": json.dumps(doc.metadata or {}, ensure_ascii=False)
+                })
+                for idx, doc in enumerate(retrieved_documents)
+            ])
+            footer_prompt = self.template_parser.get("rag", "footer_prompt")
+            full_prompt = "\n\n".join([documents_prompts, footer_prompt])
 
-        if not retrieved_documents or len(retrieved_documents) == 0:
-            logger.warning(f"No documents retrieved for RAG question answering for project {str(project.id)}")
-            return answer, full_prompt
+            # Retrieve the Answer
+            answer = await self.generation_client.generate_text(
+                user_prompt=full_prompt,
+                system_prompt=system_prompt,
+                temperature=0.5
+                )
+            if not answer:
+                logger.error(f"Can't generate answer for RAG question answering for project {str(project.id)}")
+                return None
+            
+            logger.info(f"RAG answer generated successfully for project {str(project.id)}")
+            return answer
         
-        # step2: Construct LLM prompt
-        system_prompt = self.template_parser.get("rag", "system_prompt")
-
-        documents_prompts = "\n".join([
-            self.template_parser.get("rag", "document_prompt", {
-                    "doc_num": idx + 1,
-                    "chunk_text": doc.text,
-                    "chunk_metadata": json.dumps(doc.metadata or {}, ensure_ascii=False)
-            })
-            for idx, doc in enumerate(retrieved_documents)
-        ])
-
-        footer_prompt = self.template_parser.get("rag", "footer_prompt")
-        full_prompt = "\n\n".join([documents_prompts, footer_prompt])
-
-        # step4: Retrieve the Answer
-        answer = await self.generation_client.generate_text(
-            user_prompt=full_prompt,
-            system_prompt=system_prompt,
-            temperature=0.5
-            )
-        if not answer:
-            logger.error(f"Error generating answer for RAG question answering for project {str(project.id)}")
-            return None, full_prompt
-        
-        logger.info(f"RAG answer generated successfully for project {str(project.id)}")
-        return answer, full_prompt
+        except Exception as e:
+            logger.error(f"Error generating answer for project with id {str(project.id)}: {e}")
+            raise

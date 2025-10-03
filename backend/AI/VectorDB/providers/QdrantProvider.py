@@ -63,25 +63,26 @@ class QdrantProvider(VectorDBInterface):
 
     async def delete_paper_embeddings(self, collection_name: str, paper_id: str):
         '''Delete all chunks embeddings related to a specific paper in a collection'''
-        if await self.client.collection_exists(collection_name):
-            try:
-                await self.client.delete(
-                    collection_name=collection_name,
-                    filter=models.Filter(
-                        must=[
-                            models.FieldCondition(
-                                key="paper_id",
-                                match=models.MatchValue(value=paper_id)
-                            )
-                        ]
-                    )
-                )
-                logger.info(f"Deleted embeddings for paper_id '{paper_id}' in collection '{collection_name}'.")
-            except Exception as e:
-                logger.error(f"Error deleting embeddings for paper_id '{paper_id}' in collection '{collection_name}': {e}")
-                raise
-        else:
+        if not await self.client.collection_exists(collection_name):
             logger.warning(f"Collection '{collection_name}' does not exist.")
+            raise Exception(f"Collection '{collection_name}' does not exist.")
+        
+        try:
+            await self.client.delete(
+                collection_name=collection_name,
+                filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="paper_id",
+                            match=models.MatchValue(value=paper_id)
+                        )
+                    ]
+                )
+            )
+            logger.info(f"Deleted embeddings for paper_id '{paper_id}' in collection '{collection_name}'.")
+        except Exception as e:
+            logger.error(f"Error deleting embeddings for paper_id '{paper_id}' in collection '{collection_name}': {e}")
+            raise
 
     async def create_collection(self, collection_name: str, embedding_size: int, do_reset: bool = False):
         try:
@@ -115,7 +116,7 @@ class QdrantProvider(VectorDBInterface):
 
         if not await self.client.collection_exists(collection_name):
             logger.error(f"Collection '{collection_name}' does not exist.")
-            raise
+            raise Exception(f"Collection '{collection_name}' does not exist.")
         try:
             await self.client.upsert(
                 collection_name=collection_name,
@@ -131,7 +132,7 @@ class QdrantProvider(VectorDBInterface):
 
         except Exception as e:
             logger.error(f"Error inserting document into collection '{collection_name}': {e}")
-            return False
+            raise
 
     async def insert_many(
         self,
@@ -145,7 +146,7 @@ class QdrantProvider(VectorDBInterface):
     ):
         if not await self.client.collection_exists(collection_name):
             logger.error(f"Collection '{collection_name}' does not exist.")
-            raise
+            raise Exception(f"Collection '{collection_name}' does not exist.")
 
         metadatas = metadatas or [{} for _ in range(len(texts))]
 
@@ -177,7 +178,11 @@ class QdrantProvider(VectorDBInterface):
 
     async def query_search(self, collection_name:str, query_vector:List[float],
             limit:int = 5, min_score:float = 0.7, return_metadata: bool = False
-            ):
+    ):
+        if not await self.client.collection_exists(collection_name):
+            logger.error(f"Collection '{collection_name}' does not exist.")
+            raise Exception(f"Collection '{collection_name}' does not exist.")
+        
         try:
             search_result = await self.client.search(
                 collection_name=collection_name,

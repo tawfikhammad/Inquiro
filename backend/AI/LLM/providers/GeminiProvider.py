@@ -39,13 +39,17 @@ class GeminiProvider(LLMInterface):
     async def process_text(self, text: str):
         return text[:self.default_max_input_characters].strip()
 
-    async def generate_text(self, user_prompt: str, system_prompt: str,
-                               temperature: float = None, max_output_tokens: int = None
-                               ):
+    async def generate_text(
+        self,
+        user_prompt: str,
+        system_prompt: str,
+        temperature: float = None,
+        max_output_tokens: int = None
+    ):
 
         if not self.generation_model_id:
             self.logger.error("Generation model for Gemini was not set")
-            raise
+            raise Exception("Generation model for Gemini was not set")
 
         try:
             config = GenerateContentConfig(
@@ -69,7 +73,7 @@ class GeminiProvider(LLMInterface):
     async def embed_text(self, text: str, document_type: str = None):
         if not self.embedding_model_id:
             self.logger.error("Embedding model for Gemini was not set")
-            return None
+            raise Exception("Embedding model for Gemini was not set")
 
         try:
             task_type = self.enums.DOCUMENT.value
@@ -93,12 +97,13 @@ class GeminiProvider(LLMInterface):
 
         except Exception as e:
             self.logger.error(f"Error embedding text with Gemini: {str(e)}")
-            return None
+            raise
 
     async def summarize_text(self, user_prompt: str, system_prompt: str = "", temperature: float = None, max_output_tokens: int = None):
         if not self.summarization_model_id:
             self.logger.error("No model set for summarization with Gemini")
-            return None
+            raise Exception("summarization model for Gemini was not set")
+        
         try:
             config = GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -115,7 +120,7 @@ class GeminiProvider(LLMInterface):
         
         except Exception as e:
             self.logger.error(f"Error summarizing text with Gemini: {str(e)}")
-            return None
+            raise
 
     async def construct_prompt(self, prompt: str, role: str):
         return {

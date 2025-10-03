@@ -18,9 +18,10 @@ async def index_project(request: Request, project_id: str, push_request: PushReq
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
+        logger.error(f"Project with id {project_id} not found.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     rag_controller = RAGController(
         vectordb_client=request.app.vectordb_client,
@@ -68,9 +69,10 @@ async def get_project_index_info(request: Request, project_id: str):
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
+        logger.error(f"Project with id {project_id} not found.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     rag_controller = RAGController(
         vectordb_client=request.app.vectordb_client,
@@ -80,13 +82,12 @@ async def get_project_index_info(request: Request, project_id: str):
     )
     collection_info = await rag_controller.get_vdb_collection_info(project=project)
     if not collection_info:
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "signal": ResponseSignals.VDB_INFO_RETRIEVED_ERROR.value
-            }
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseSignals.VDB_COLLECTION_NOT_FOUND.value
         )
     return JSONResponse(
+        status_code=status.HTTP_200_OK,
         content={
             "signal": ResponseSignals.VDB_INFO_RETRIEVED_SUCCESS.value,
             "collection_info": collection_info
@@ -103,7 +104,7 @@ async def search_index(request: Request, project_id: str, search_request: Search
         logger.error(f"Project with id {project_id} not found.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     rag_controller = RAGController(
         vectordb_client=request.app.vectordb_client,
@@ -121,7 +122,8 @@ async def search_index(request: Request, project_id: str, search_request: Search
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={
-                "signal": ResponseSignals.VDB_NO_SEARCH_RESULTS.value
+                "signal": ResponseSignals.VDB_NO_SEARCH_RESULTS.value,
+                "result": None
             }
         )
     return JSONResponse(
@@ -141,7 +143,7 @@ async def answer_rag(request: Request, project_id: str, search_request: SearchRe
         logger.error(f"Project with id {project_id} not found.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=ResponseSignals.PAPER_NOT_FOUND.value
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
     rag_controller = RAGController(
         vectordb_client=request.app.vectordb_client,
@@ -149,24 +151,21 @@ async def answer_rag(request: Request, project_id: str, search_request: SearchRe
         embedding_client=request.app.embedding_client,
         template_parser=request.app.template_parser,
     )
-    answer, full_prompt = await rag_controller.answer(
+    answer = await rag_controller.answer(
         project=project,
         query=search_request.query,
         limit=search_request.limit,
+        RAGFusion=search_request.RAGFusion
     )
     if not answer:
-        return JSONResponse(
+        raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={
-                "signal": ResponseSignals.RAG_NO_ANSWER.value,
-                "answer": None,
-                "full_prompt": full_prompt,
-            }
+            detail=ResponseSignals.RAG_NO_ANSWER.value
         )
     return JSONResponse(
+        status_code=status.HTTP_200_OK,
         content={
             "signal": ResponseSignals.RAG_ANSWER_SUCCESS.value,
             "answer": answer,
-            "full_prompt": full_prompt,
         }
     )
