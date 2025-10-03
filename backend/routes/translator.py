@@ -43,6 +43,6 @@ async def translate_text(request: Request, translate_request: TranslateRequest):
         logger.error(f"Translation error: {e}")
         raise HTTPException(
             status_code= status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail= ResponseSignals.TRANSLATION_ERROR
+            detail= ResponseSignals.TRANSLATION_ERROR.value
         )
    
