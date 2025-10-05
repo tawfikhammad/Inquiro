@@ -24,10 +24,10 @@ class PaperModel(BaseModel):
         try:
             res = await self.collection.insert_one(Paper.dict(by_alias=True, exclude_unset=True))
             Paper.id = res.inserted_id
-            logger.info(f"Paper created with ID: {Paper.id} and name: {Paper.paper_name}")
+            logger.info(f"Paper created with ID: {str(Paper.id)} and name: {Paper.paper_name}")
             return Paper
         except Exception as e:
-            logger.error(f"Error creating paper with ID: {Paper.id} and name: {Paper.paper_name}")
+            logger.error(f"Error creating paper with ID: {str(Paper.id)} and name: {Paper.paper_name}")
             raise
 
     async def get_paper_by_name(self, paper_project_id: str, paper_name: str):
