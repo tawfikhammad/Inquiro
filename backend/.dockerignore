@@ -68,7 +68,6 @@ docker-compose*.yml
 
 # Large assets (will be mounted as volumes)
 assets/library/
-assets/vdb/
 
 # Environment files (use environment variables instead)
 .env
