@@ -12,7 +12,6 @@ import os
 from utils import get_logger 
 logger = get_logger(__name__)
 
-
 def _serialize_summary(summary):
     summary_dict = summary.dict(by_alias=True, exclude_unset=True)
     summary_dict["_id"] = str(summary_dict["_id"])
@@ -25,7 +24,7 @@ summary_router = APIRouter()
 # Create a summary.
 @summary_router.post("/create")
 async def create_summary(request: Request, project_id: str, paper_id: str, summary_request: SummaryRequest):
-    logger.info(f"Create summary request received for project_id: {project_id} and paper_id: {paper_id}")
+    logger.info(f"Incoming request to create summary for project_id: {project_id} and paper_id: {paper_id}")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
@@ -54,24 +53,31 @@ async def create_summary(request: Request, project_id: str, paper_id: str, summa
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "message": ResponseSignals.SUMMARY_EXISTS.value,
-                "summary": _serialize_summary(summary)
+                "message": f"A summary for this paper already exists. Please delete the existing summary or choose a different paper."
             }
         )
-
+    # Check if there is a summary with the new name
+    summary = await summary_model.get_summary_by_name(summary_project_id=project_id, summary_name=summary_request.summary_name)
+    if summary:
+        logger.warning(f"Summary already exists with name: {summary_request.summary_name} in project_id: {project_id}")
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "message": f"A summary with name '{summary_request.summary_name}' already exists in this project. Please choose another name."
+            }
+        )
     summary_controller = SummaryController(
         summary_client=request.app.summary_client,
         template_parser=request.app.template_parser
     )
+    # Check if summary file already exists
     summary_path = await summary_controller.summary_path(project.project_title, summary_request.summary_name)
     if Path(summary_path).exists():
         logger.warning(f"There is already a summary file at path: {summary_path}")
-        # Make user choose another name
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "message": ResponseSignals.SUMMARY_EXISTS.value,
-                "detail": f"Summary file already exists at path: {summary_path}. Please choose another name."
+                "message": f"Summary file already exists at path: {summary_path}. Please choose another name."
             }
         )
         
@@ -108,11 +114,10 @@ async def create_summary(request: Request, project_id: str, paper_id: str, summa
 # List all summaries by project
 @summary_router.get("/")
 async def list_summaries(request: Request, project_id: str):
-    logger.info(f"List summaries request received for project_id: {project_id}")
+    logger.info(f"Incoming request to list summaries for project_id: {project_id}")
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
     summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
-
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=[_serialize_summary(summary) for summary in summaries]
@@ -121,7 +126,7 @@ async def list_summaries(request: Request, project_id: str):
 # Get a summary by project
 @summary_router.get("/{summary_id}")      
 async def get_summary(request: Request, project_id: str, paper_id: str, summary_id: str):
-    logger.info(f"Get summary request received for project_id: {project_id}, paper_id: {paper_id} and summary_id: {summary_id}")
+    logger.info(f"Incoming request to get summary for project_id: {project_id}, paper_id: {paper_id} and summary_id: {summary_id}")
 
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
     summary = await summary_model.get_paper_summary(summary_project_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
@@ -138,14 +143,13 @@ async def get_summary(request: Request, project_id: str, paper_id: str, summary_
 # Delete a summary by ID
 @summary_router.delete("/{summary_id}")
 async def delete_summary(request: Request, project_id: str, paper_id: str, summary_id: str):
-    logger.info(f"Delete summary request received for project_id: {project_id}, paper_id: {paper_id}, summary_id: {summary_id}")
+    logger.info(f"Incoming request to delete summary for project_id: {project_id}, paper_id: {paper_id}, summary_id: {summary_id}")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
-        logger.warning(f"Project not found with ID: {project_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
@@ -155,7 +159,6 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
             summary_client=request.app.summary_client,
             template_parser=request.app.template_parser
     )
-
     summary = await summary_model.get_summary_by_id(summary_project_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
     summary_path = await summary_controller.summary_path(project.project_title, summary.summary_name)
     if not summary:
@@ -168,8 +171,11 @@ async def delete_summary(request: Request, project_id: str, paper_id: str, summa
             detail=ResponseSignals.SUMMARY_NOT_FOUND.value
         )
 
-    # Delete from DB and filesystem
-    await summary_model.delete_paper_summary(project_summary_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
+    # Delete from DB
+    await summary_model.delete_summary(project_summary_id=project_id, summary_paper_id=paper_id, summary_id=summary_id)
+    logger.info(f"Summary with ID: {summary_id} deleted from database.")
+
+    # Delete from filesystem   
     if Path(summary_path).exists():
         Path(summary_path).unlink()
         logger.info(f"Summary file deleted at {summary_path}")
@@ -301,12 +307,21 @@ async def rename_summary(request: Request, project_id: str, paper_id: str, summa
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.SUMMARY_NOT_FOUND.value
         )
-    
+
+    # Check if there is a summary with the new name
+    existing = await summary_model.get_summary_by_name(summary_project_id=project_id, summary_name=rename_request.new_name)
+    if existing:
+        logger.warning(f"Summary with new name '{rename_request.new_name}' already exists.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail= f"Summary with name '{rename_request.new_name}' already exists in this project. Please choose another name."
+
+        )
+
     summary_controller = SummaryController(
         summary_client=request.app.summary_client,
         template_parser=request.app.template_parser
     )
-    
     try:
         # Rename the summary file in the filesystem
         await summary_controller.rename_summary_file(
@@ -317,6 +332,7 @@ async def rename_summary(request: Request, project_id: str, paper_id: str, summa
         # Update summary name in database
         summary.summary_name = rename_request.new_name
         await summary_model.update_summary(summary)
+        logger.info(f"Summary renamed successfully to {rename_request.new_name}")
         
         return JSONResponse(
             status_code=status.HTTP_200_OK,
