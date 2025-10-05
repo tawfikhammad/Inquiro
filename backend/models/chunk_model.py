@@ -23,17 +23,26 @@ class ChunkModel(BaseModel):
     async def ensure_indexes(self):
         await self.create_indexes(self.collection, Chunk.get_indexes())
 
-    async def create_chunk(self, chunk: Chunk):
-        res = await self.collection.insert_one(chunk.dict(by_alias=True, exclude_unset=True))
-        chunk.id = res.inserted_id
-        return chunk
+    async def create_chunk(self, chunk: Chunk) -> Chunk:
+        try:
+            res = await self.collection.insert_one(chunk.dict(by_alias=True, exclude_unset=True))
+            chunk.id = res.inserted_id
+            logger.info(f"Chunk created with ID: {str(chunk.id)} for paper ID: {str(chunk.chunk_paper_id)}")
+            return chunk
+        except Exception as e:
+            logger.error(f"Error creating chunk with ID: {str(chunk.id)} for paper ID: {str(chunk.chunk_paper_id)}: {e}")
+            raise
 
     async def get_chunk(self, chunk_id: str):
-        record = await self.collection.find_one({"_id": chunk_id})
-        if record is None:
-            return None
-        return Chunk(**record)
-    
+        try:
+            record = await self.collection.find_one({"_id": chunk_id})
+            if record is None:
+                return None
+            return Chunk(**record)
+        except Exception as e:
+            logger.error(f"Error retrieving chunk with ID: {chunk_id}: {e}")
+            raise
+
     async def insert_chunks(self, chunks: List[Chunk], batch_size: int=100):
         try:
             inserted_ids = []
@@ -49,19 +58,20 @@ class ChunkModel(BaseModel):
             logger.error(f"Error inserting chunks: {e}")
             raise
     
-    async def get_project_chunks(self, Chunks_project_id: str, page_no: int=1, page_size: int=50):
+    async def get_project_chunks(self, chunks_project_id: str, page_no: int=1, page_size: int=50):
         try:
             records = await self.collection.find({
-                "chunk_project_id": ObjectId(Chunks_project_id)
+                "chunk_project_id": ObjectId(chunks_project_id)
                 }
             ).skip((page_no-1) * page_size).limit(page_size).to_list(length=None)
             if not records or len(records) == 0:
-                logger.info(f"No chunks found for project {Chunks_project_id} on page {page_no}")
+                logger.info(f"No chunks found for project {chunks_project_id} on page {page_no}")
                 return []
 
+            logger.info(f"Found {len(records)} chunks for project {chunks_project_id} on page {page_no}")
             return [Chunk(**record)for record in records]
         except Exception as e:
-            logger.error(f"Error fetching chunks for project {Chunks_project_id}")
+            logger.error(f"Error fetching chunks for project {chunks_project_id}: {e}")
             raise
 
     async def get_paper_chunks(self, chunks_paper_id: str):
@@ -69,9 +79,13 @@ class ChunkModel(BaseModel):
             records = await self.collection.find({
                     "chunk_paper_id": ObjectId(chunks_paper_id)
                 }).to_list(length=None)
+            if not records or len(records) == 0:
+                logger.info(f"No chunks found for paper {chunks_paper_id}")
+                return []
+            logger.info(f"Found {len(records)} chunks for paper {chunks_paper_id}")
             return [Chunk(**record)for record in records]
         except Exception as e:
-            logger.error(f"Error fetching chunks for paper {chunks_paper_id}")
+            logger.error(f"Error fetching chunks for paper {chunks_paper_id}: {e}")
             raise
 
     async def delete_project_chunks(self, chunks_project_id: str):

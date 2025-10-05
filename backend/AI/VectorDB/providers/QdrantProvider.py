@@ -42,9 +42,10 @@ class QdrantProvider(VectorDBInterface):
 
     async def get_collection_info(self, collection_name):
         if await self.client.collection_exists(collection_name):
+            logger.info(f"Retrieving info for collection: {collection_name}")
             return await self.client.get_collection(collection_name=collection_name)
         else:
-            logger.warning(f"Collection '{collection_name}' does not exist.")
+            logger.warning(f"Cannot retrieve info for collection '{collection_name}': does not exist.")
             return None
 
     async def delete_collection(self, collection_name):

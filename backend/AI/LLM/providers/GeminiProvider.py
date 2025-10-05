@@ -63,7 +63,11 @@ class GeminiProvider(LLMInterface):
                 message=user_prompt,
                 config=config
             )
-            self.logger.info(f"Chat completion response from Gemini: {response.text}")
+            if not response or not response.text:
+                self.logger.error("No response from Gemini chat completion")
+                return None
+            
+            self.logger.info(f"Received response from Gemini")
             return response.text
 
         except Exception as e:

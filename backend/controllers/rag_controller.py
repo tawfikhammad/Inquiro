@@ -82,11 +82,11 @@ class RAGController(BaseController):
                 return [query]
 
             extra_queries = [q.strip("-• \n") for q in response.split("\n") if q.strip()]
-            logger.info(f"Generated {len(extra_queries)} queries for RagFusion search: {extra_queries}")
+            logger.info(f"Generated {len(extra_queries)} queries for RagFusion search")
             return [query] + extra_queries
         
         except Exception as e:
-            logger.error(f"Error generating multiple queries for RAG: {e}")
+            logger.error(f"Error generating multiple queries for RagFusion search: {e}")
             return [query]
 
     async def search(self, project: Project, query: str, limit: int = 10, RAGFusion: bool = True):
@@ -112,7 +112,7 @@ class RAGController(BaseController):
                     min_score=0.7,
                     return_metadata=True
                 )
-                logger.info(f"VDB search returned {len(results)} results for query variation: {q}")
+                logger.info(f"VDB search returned {len(results)} results for query: {q}")
                 all_results.extend(results)
             
             if not all_results or len(all_results) == 0:
@@ -120,6 +120,7 @@ class RAGController(BaseController):
                 return []
             
             # Deduplicate results based on text content, keeping the highest score
+            logger.info(f"Deduplicating {len(all_results)} total results from VDB search")
             unique_map = {}
             for r in all_results:
                 key = r.text.strip()
@@ -138,7 +139,6 @@ class RAGController(BaseController):
     
     async def answer(self, project: Project, query: str, limit: int = 10, RAGFusion: bool = True):
         try:
-
             # Retrieve related documents
             retrieved_documents = await self.search(project=project, query=query, limit=limit, RAGFusion=RAGFusion)        
             
@@ -162,7 +162,7 @@ class RAGController(BaseController):
                 temperature=0.5
                 )
             if not answer:
-                logger.error(f"Can't generate answer for RAG question answering for project {str(project.id)}")
+                logger.error(f"No RAG answer generated for project {str(project.id)}")
                 return None
             
             logger.info(f"RAG answer generated successfully for project {str(project.id)}")
