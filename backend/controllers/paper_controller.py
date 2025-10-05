@@ -130,17 +130,17 @@ class PaperController(BaseController):
             old_path = self.path_utils.get_paper_path(project_title, f"{old_name}.pdf")
             new_path = self.path_utils.get_paper_path(project_title, f"{new_name}.pdf")
 
-            if os.path.exists(new_path):
-                logger.error(f"Cannot rename paper file: target file already exists: {new_path}")
-                raise FileExistsError(f"Target file already exists: {new_path}")
-            
             if not os.path.exists(old_path):
-                logger.error(f"Cannot rename paper file: source file does not exist: {old_path}")
+                logger.error(f"Cannot rename paper file: source file does not exist at {old_path}")
                 raise FileNotFoundError(f"Source file does not exist: {old_path}")
 
+            if os.path.exists(new_path):
+                logger.error(f"Cannot rename paper file: target file already exists at {new_path}")
+                raise FileExistsError(f"Target file already exists: {new_path}")
+            
             # Rename the file
             os.rename(old_path, new_path)
-            logger.info(f"Renamed paper file {old_name} → {new_name}")
+            logger.info(f"Paper file renamed successfully: {old_name} → {new_name}")
 
         except Exception as e:
             logger.error(f"Error renaming paper file {old_name} → {new_name}: {e}")

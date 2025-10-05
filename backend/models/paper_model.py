@@ -80,6 +80,7 @@ class PaperModel(BaseModel):
             if len(papers) == 0:
                 logger.warning(f"No papers found for the project {papers_project_id}.")
                 return []
+            logger.info(f"Fetched {len(papers)} papers for project {papers_project_id}.")
             return papers
         except Exception as e:
             logger.error(f"Error fetching papers for project {papers_project_id}: {e}")

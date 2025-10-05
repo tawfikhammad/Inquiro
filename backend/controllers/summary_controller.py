@@ -120,16 +120,16 @@ class SummaryController(BaseController):
 
             # Validate file existence
             if not os.path.exists(old_path):
-                logger.error(f"Summary file not found: {old_path}")
-                raise FileNotFoundError(f"Original summary file not found: {old_path}")
+                logger.error(f"Cannot rename summary file: source file does not exist at {old_path}")
+                raise FileNotFoundError(f"Source summary file not exist: {old_path}")
 
             if os.path.exists(new_path):
-                logger.error(f"File with new name already exists: {new_path}")
+                logger.error(f"Cannot rename summary file: target file already exists at {new_path}")
                 raise FileExistsError(f"A file with new name '{new_name}' already exists.")
 
             # Perform rename
             os.rename(old_path, new_path)
-            logger.info(f"Renamed summary file {old_name} → {new_name}")
+            logger.info(f"Summary file renamed successfully: {old_name} → {new_name}")
             
         except Exception as e:
             logger.error(f"Error renaming summary file {old_name} → {new_name}: {e}")
