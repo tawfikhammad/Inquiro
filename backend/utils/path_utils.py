@@ -22,17 +22,15 @@ class PathUtils:
         os.makedirs(summaries_dir, exist_ok=True)
         
         return project_dir, papers_dir, summaries_dir
-    
 
-    def get_file_path(self, project_title: str, file_name: str) -> Path:
+    def get_paper_path(self, project_title: str, paper_filename: str) -> Path:
         project_dir, papers_dir, _ = self.get_project_dir(project_title=project_title)
-        return papers_dir / file_name
-    
-    def get_summary_path(self, project_title: str, file_name: str) -> Path:
+        return papers_dir / paper_filename
+
+    def get_summary_path(self, project_title: str, summary_filename: str) -> Path:
         project_dir, _, summaries_dir = self.get_project_dir(project_title=project_title)    
-        return summaries_dir / file_name
-        
-        
+        return summaries_dir / summary_filename
+
     def get_project_files(self, project_title: str):
         _, papers_dir, summaries_dir = self.get_project_dir(project_title)
         
