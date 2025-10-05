@@ -6,12 +6,10 @@ class PathUtils:
         self.base_dir = Path(__file__).resolve().parent.parent
         self.assets_dir = self.base_dir / "assets"
         self.library_dir = self.assets_dir / "library"
-        self.vdb_dir = self.assets_dir / "vdb"
         
         # Ensure base directories exist
         os.makedirs(self.assets_dir, exist_ok=True)
         os.makedirs(self.library_dir, exist_ok=True)
-        os.makedirs(self.vdb_dir, exist_ok=True)
 
     def get_project_dir(self, project_title: str):
         
@@ -42,9 +40,3 @@ class PathUtils:
         summary_files = [f.name for f in summaries_dir.glob('*') if f.is_file()]
         
         return paper_files, summary_files
-    
-    def get_vdb_path(self, db_name: str) -> str:
-        db_path = os.path.join(self.vdb_dir, db_name)
-        if not os.path.exists(db_path):
-            os.makedirs(db_path, exist_ok=True)
-        return db_path

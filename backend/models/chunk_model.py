@@ -43,6 +43,7 @@ class ChunkModel(BaseModel):
                 res = await self.collection.insert_many(docs)
                 inserted_ids.extend(res.inserted_ids)
                 logger.info(f"Inserted batch of {len(docs)} chunks.")
+            logger.info(f"Total inserted chunk IDs: {inserted_ids}")
             return inserted_ids
         except Exception as e:
             logger.error(f"Error inserting chunks: {e}")

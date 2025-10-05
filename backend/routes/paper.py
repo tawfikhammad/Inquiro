@@ -4,6 +4,7 @@ from controllers import PaperController
 from models import ProjectModel, PaperModel, ChunkModel
 from models.db_schemas import Paper, Chunk
 from utils.enums import ResponseSignals, AssetTypeEnums
+from routes.schema.requests import RenameRequest
 import aiofiles
 from pathlib import Path
 from bson import ObjectId
@@ -33,15 +34,20 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
     - Generates chunks from the file 
     - saves chunks to the database
     """
-    logger.info(f"Upload file request for project id: {project_id}")
+    logger.info(f"Incoming request to upload file for project id: {project_id}")
 
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
+
+    # Check if project exists
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
+    
     paper_controller = PaperController()
     isvalid, message = await paper_controller.validfile(file=file)
     if not isvalid:
@@ -49,19 +55,24 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=message
         )
-    paper_path, paper_name = await paper_controller.paper_path(project_title=project.project_title, paper_name=file.filename)
 
+    paper_name = Path(file.filename).stem
+    paper_path = await paper_controller.paper_path(project_title=project.project_title, paper_name=paper_name)
     try:
-        async with aiofiles.open(paper_path, "wb") as f:
-            while chunk:= await file.read(app_settings.CHUNK_SIZE):
-                await f.write(chunk)
+        if not Path(paper_path).exists():
+            async with aiofiles.open(paper_path, "wb") as f:
+                while chunk:= await file.read(app_settings.CHUNK_SIZE):
+                    await f.write(chunk)
+            logger.info(f"File saved at {paper_path}")
+        else:
+            logger.warning(f"File already exists at {paper_path}, skipping save.")
     except Exception as e:
         logger.error(f"Error saving file: {e}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": ResponseSignals.FAILED_SAVING.value})
-    
-    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+            content={"message": ResponseSignals.FAILED_SAVING.value}
+        )
+
     paper = await paper_model.get_or_create_paper(
         Paper(
             paper_project_id=project.id,
@@ -92,7 +103,6 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
             chunk_index_in_paper=i
         ) for i, chunk in enumerate(chunks)
     ]
-    chunk_model = await ChunkModel.get_instance(db_client=request.app.mongodb_client)
     chunks_ids = await chunk_model.insert_chunks(inserted_chunks)
 
     return JSONResponse(
@@ -109,7 +119,6 @@ async def upload_paper(request: Request, project_id: str, file: UploadFile = Fil
 async def list_papers(request: Request, project_id: str):
     paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
     papers = await paper_model.get_project_papers(papers_project_id=project_id)
-
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content=[_serialize_paper(paper) for paper in papers]
@@ -129,6 +138,7 @@ async def get_paper(request: Request, project_id: str, paper_id: str):
         status_code=status.HTTP_200_OK, 
         content=_serialize_paper(paper)
     )
+
 # Delete a paper
 @paper_router.delete("/{paper_id}")
 async def delete_paper(request: Request, project_id: str, paper_id: str):
@@ -144,7 +154,7 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
         )
     paper_controller = PaperController()
     paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
-    paper_path, _ = await paper_controller.paper_path(project.project_title, paper.paper_name)
+    paper_path = await paper_controller.paper_path(project.project_title, paper.paper_name)
     if not paper:
          # Clean file if exists
         if Path(paper_path).exists():
@@ -190,7 +200,7 @@ async def serve_paper_file(request: Request, project_id: str, paper_id: str):
             detail=ResponseSignals.PAPER_NOT_FOUND.value
     )
     paper_controller = PaperController()
-    paper_path, paper_name = await paper_controller.paper_path(project_title=project.project_title, paper_name=paper.paper_name)
+    paper_path = await paper_controller.paper_path(project_title=project.project_title, paper_name=paper.paper_name)
     if not Path(paper_path).exists():
         logger.error(f"Paper file not found at {paper_path}")
         raise HTTPException(
@@ -206,10 +216,70 @@ async def serve_paper_file(request: Request, project_id: str, paper_id: str):
         return StreamingResponse(
             iter_file(Path(paper_path)),
             media_type="application/pdf",
-            headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(paper_name)}.pdf"}
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(paper.paper_name)}.pdf"}
         )
     except Exception as e:
         logger.error(f"Error displaying PDF file: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
             detail=ResponseSignals.PAPER_DISPLAY_ERROR.value)
+
+# Rename a paper
+@paper_router.put("/{paper_id}/rename")
+async def rename_paper(request: Request, project_id: str, paper_id: str, rename_request: RenameRequest):
+    logger.info(f"Rename paper request for paper_id: {paper_id} to new name: {rename_request.new_name}")
+    
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    
+    # Check if project exists
+    project = await project_model.get_project_by_id(project_id=project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
+        )
+    
+    # Check if paper exists
+    paper = await paper_model.get_paper_by_id(paper_project_id=project_id, paper_id=paper_id)
+    if not paper:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseSignals.PAPER_NOT_FOUND.value
+        )
+
+    # Check if paper with new name exists
+    existing = await paper_model.get_paper_by_name(paper_project_id=project_id, paper_name=rename_request.new_name)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Paper with name '{rename_request.new_name}' already exists in this project. Please choose another name."
+        )
+
+    paper_controller = PaperController()
+    try:
+        # Rename the file in filesystem
+        await paper_controller.rename_paper_file(
+            project_title=project.project_title,
+            old_name=paper.paper_name,
+            new_name=rename_request.new_name
+        )
+        
+        # Update paper name in database
+        paper.paper_name = rename_request.new_name
+        await paper_model.update_paper(paper)
+        logger.info(f"Paper renamed successfully to {rename_request.new_name}")
+        
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": ResponseSignals.PAPER_RENAME_SUCCESS.value,
+                "paper": _serialize_paper(paper)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error renaming paper {paper_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseSignals.PAPER_RENAME_ERROR.value
+        )

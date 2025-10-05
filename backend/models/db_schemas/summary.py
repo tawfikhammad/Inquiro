@@ -24,7 +24,18 @@ class Summary(BaseModel):
                 "unique": False
             },
             {
-                "key": [("summary_name", 1), ("summary_project_id", 1)],
+                "key": [("summary_project_id", 1), ("summary_paper_id", 1)],
+                "name": "summary_project_id_paper_id_index_1",
+                "unique": True
+            },
+            {
+                "key": [("summary_project_id", 1), ("summary_paper_id", 1), ("id", 1)],
+                "name": "summary_project_id_paper_id_id_index_1",
+                "unique": True
+            },
+            {
+                "key": [("summary_project_id", 1), ("summary_name", 1)],
                 "name": "summary_project_id_name_index_1",
-                "unique": True}
+                "unique": True
+            }
         ]

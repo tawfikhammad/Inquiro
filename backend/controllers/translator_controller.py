@@ -1,10 +1,8 @@
 from .base_controller import BaseController
 from utils import get_logger
 from utils.enums import ResponseSignals
-#from utils.text_utils import TextLanguage
 
 logger = get_logger(__name__)
-
 class TranslatorController(BaseController):
     def __init__(self, generation_client, template_parser):
         super().__init__()

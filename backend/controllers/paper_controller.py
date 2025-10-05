@@ -5,6 +5,7 @@ from .base_controller import BaseController
 from utils.text_utils import Cleaner
 from bson import ObjectId
 from utils.enums import ResponseSignals
+import os
 from utils import get_logger
 logger = get_logger(__name__)
 
@@ -22,11 +23,9 @@ class PaperController(BaseController):
         return True, ResponseSignals.VALID_FILE.value
 
     async def paper_path(self, project_title: str, paper_name: str):
-        """Return the final PDF path and the cleaned base name"""
-        base_name = self.cleaner.filename_cleaner(paper_name)
-        filename = f"{base_name}.pdf"
-        file_path = self.path_utils.get_file_path(project_title, filename)
-        return file_path, base_name
+        paper_filename = f"{paper_name}.pdf"
+        file_path = self.path_utils.get_paper_path(project_title, paper_filename)
+        return file_path
 
     async def get_pdf_content(self, file_path: str):
         """
@@ -123,4 +122,26 @@ class PaperController(BaseController):
             return all_docs
         except Exception as e:
             logger.error(f"Error generating chunks for paper '{paper_name}': {e}")
+            raise
+
+    async def rename_paper_file(self, project_title: str, old_name: str, new_name: str):
+        try:
+            # Get paths for old and new files
+            old_path = self.path_utils.get_paper_path(project_title, f"{old_name}.pdf")
+            new_path = self.path_utils.get_paper_path(project_title, f"{new_name}.pdf")
+
+            if not os.path.exists(old_path):
+                logger.error(f"Cannot rename paper file: source file does not exist at {old_path}")
+                raise FileNotFoundError(f"Source file does not exist: {old_path}")
+
+            if os.path.exists(new_path):
+                logger.error(f"Cannot rename paper file: target file already exists at {new_path}")
+                raise FileExistsError(f"Target file already exists: {new_path}")
+            
+            # Rename the file
+            os.rename(old_path, new_path)
+            logger.info(f"Paper file renamed successfully: {old_name} → {new_name}")
+
+        except Exception as e:
+            logger.error(f"Error renaming paper file {old_name} → {new_name}: {e}")
             raise

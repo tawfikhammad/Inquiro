@@ -103,11 +103,34 @@ class SummaryController(BaseController):
             async with aiofiles.open(summary_path, 'w', encoding='utf-8') as f:
                 await f.write(summary_content)
                 logger.info(f"Summary saved to {summary_path}")
+
         except Exception as e:
             logger.error(f"Error saving summary to {summary_path}: {e}")
-            raise   
-            
-    async def summary_path(self, project_title, paper_name):
-        summary_filename = f'{paper_name}_summary.md'
+            raise
+
+    async def summary_path(self, project_title, summary_name):
+        summary_filename = f'{summary_name}.md'
         summary_path = self.path_utils.get_summary_path(project_title, summary_filename)
-        return summary_path, summary_filename.split('.')[0]
+        return summary_path
+
+    async def rename_summary_file(self, project_title: str, old_name: str, new_name: str):
+        try:
+            old_path = self.path_utils.get_summary_path(project_title, f"{old_name}.md")
+            new_path = self.path_utils.get_summary_path(project_title, f"{new_name}.md")
+
+            # Validate file existence
+            if not os.path.exists(old_path):
+                logger.error(f"Cannot rename summary file: source file does not exist at {old_path}")
+                raise FileNotFoundError(f"Source summary file not exist: {old_path}")
+
+            if os.path.exists(new_path):
+                logger.error(f"Cannot rename summary file: target file already exists at {new_path}")
+                raise FileExistsError(f"A file with new name '{new_name}' already exists.")
+
+            # Perform rename
+            os.rename(old_path, new_path)
+            logger.info(f"Summary file renamed successfully: {old_name} → {new_name}")
+            
+        except Exception as e:
+            logger.error(f"Error renaming summary file {old_name} → {new_name}: {e}")
+            raise
