@@ -3,7 +3,12 @@ from fastapi.responses import JSONResponse
 from models import ProjectModel, PaperModel, ChunkModel, SummaryModel
 from models.db_schemas import Project
 from .schema import ProjectRequest
+from .schema.requests import RenameRequest
 from utils.enums import ResponseSignals
+from utils import PathUtils
+import shutil
+from pathlib import Path
+import asyncio
 
 from utils import get_logger
 logger = get_logger(__name__)
@@ -12,7 +17,6 @@ def _serialize_project(project):
     project_dict = project.dict(by_alias=True, exclude_unset=True)
     project_dict["_id"] = str(project_dict["_id"])
     return project_dict
-
 
 project_router = APIRouter()
 
@@ -44,7 +48,6 @@ async def create(request: Request, project_request: ProjectRequest):
         Project(project_title=project_request.project_title)
     )
     serialized_project = _serialize_project(created_project)
-
     return JSONResponse(
         status_code=status.HTTP_201_CREATED,
         content={
@@ -71,6 +74,35 @@ async def get_project(request: Request, project_id: str):
         content=serialized_project
     )
 
+# List all assets (papers and summaries) in a project.
+@project_router.get('/{project_id}/assets')
+async def get_project_assets(request: Request, project_id: str):
+    logger.info(f"Incoming request to get assets for project ID: {project_id}")
+
+    project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+    project = await project_model.get_project_by_id(project_id=project_id)
+    if not project:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ResponseSignals.PROJECT_NOT_FOUND.value
+        )
+    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
+    papers = await paper_model.get_project_papers(papers_project_id=project_id)
+
+    summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
+    summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
+    
+    papers_response = [paper.dict(by_alias=True, exclude_unset=True) for paper in papers]
+    summaries_response = [summary.dict(by_alias=True, exclude_unset=True) for summary in summaries]
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "papers number": len(papers_response),
+            "summaries number": len(summaries_response)
+        }
+    )
+
 # Delete all projects.
 @project_router.delete("/")
 async def delete_all_projects(request: Request):
@@ -91,6 +123,12 @@ async def delete_all_projects(request: Request):
     await request.app.vectordb_client.delete_all_collections()
     logger.info("All projects and associated data deleted.")
 
+    # Delete library directory
+    library_folder = PathUtils.library_dir    # assets/library/
+    if Path(library_folder).exists():
+        logger.info(f"Deleting library directory: {library_folder}")
+        await asyncio.to_thread(shutil.rmtree, library_folder, ignore_errors=True)
+
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # Delete a project.
@@ -105,7 +143,6 @@ async def delete_project(request: Request, project_id: str):
 
     project = await project_model.get_project_by_id(project_id=project_id)
     if not project:
-        logger.warning(f"Project not found for deletion: {project_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
@@ -120,41 +157,73 @@ async def delete_project(request: Request, project_id: str):
     # Delete the corresponding collection in the vdb
     collection_name = f"collection_{project_id}".strip()
     await request.app.vectordb_client.delete_collection(collection_name=collection_name)
-    logger.info(f"Project and associated data deleted: {project_id}")   
+    logger.info(f"Project and associated data deleted: {project_id}")
+
+    # Delete project folder from filesystem
+    project_folder = PathUtils.get_project_dir(project.project_title) # assets/library/{project_title}
+    if Path(project_folder).exists():
+        logger.info(f"Deleting project folder: {project_folder}")
+        await asyncio.to_thread(shutil.rmtree, project_folder, ignore_errors=True)
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-# List all assets (papers and summaries) in a project.
-@project_router.get('/{project_id}/assets')
-async def get_project_assets(request: Request, project_id: str):
+# Rename a project
+@project_router.put("/{project_id}/rename")
+async def rename_project(request: Request, project_id: str, rename_request: RenameRequest):
+    logger.info(f"Incoming request to rename project: {project_id} to new title: {rename_request.new_name}")
+    
     project_model = await ProjectModel.get_instance(db_client=request.app.mongodb_client)
+
+    # Check if project exists
     project = await project_model.get_project_by_id(project_id=project_id)
-    if project == 0:
-        logger.warning(f"Project not found when fetching assets: {project_id}")
+    if not project:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=ResponseSignals.PROJECT_NOT_FOUND.value
         )
-    paper_model = await PaperModel.get_instance(db_client=request.app.mongodb_client)
-    papers = await paper_model.get_project_papers(papers_project_id=project_id)
-
-    summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
-    summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
     
-    papers_response = [paper.dict(by_alias=True, exclude_unset=True) for paper in papers]
-    summaries_response = [summary.dict(by_alias=True, exclude_unset=True) for summary in summaries]
+    # Check if project with new title already exists
+    existing = await project_model.get_project_by_name(project_title=rename_request.new_name)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Project with title '{rename_request.new_name}' already exists. Please choose another title."
+        )
     
-    return JSONResponse(
-        status_code=200,
-        content={
-            "papers number": len(papers_response),
-            "summaries number": len(summaries_response)
-        }
-    )
+    old_project_path = PathUtils.get_project_dir(project.project_title)    # assets/library/{project_title}
+    new_project_path = PathUtils.get_project_dir(rename_request.new_name)
+
+    if Path(new_project_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Project with title '{rename_request.new_name}' already exists"
+        )
+    if not Path(old_project_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project folder for '{project.project_title}' does not exist"
+        )
     
-    
+    try:
+        # Rename project folder in filesystem
+        await asyncio.to_thread(Path(old_project_path).rename, new_project_path)
+        logger.info(f"Project folder renamed successfully: {old_project_path} → {new_project_path}")
+        
+        # Update project title in database
+        project.project_title = rename_request.new_name
+        await project_model.update_project(project)
+        logger.info(f"Project renamed successfully to {rename_request.new_name}")
 
-
-
-    
-
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content={
+                "message": ResponseSignals.PROJECT_UPDATED_SUCCESS.value,
+                "project": _serialize_project(project)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error renaming project {project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=ResponseSignals.PROJECT_RENAME_FAILED.value
+        )
