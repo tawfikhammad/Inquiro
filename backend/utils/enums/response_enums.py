@@ -22,6 +22,10 @@ class ResponseSignals(Enum):
     PAPER_NOT_FOUND = "Paper Not Found"
     PAPER_EXISTS = 'Paper Already Exists'
     PAPER_DISPLAY_ERROR = 'Failed To Display Paper'
+    PAPER_UPDATE_SUCCESS = 'Paper Updated Successfully'
+    PAPER_UPDATE_ERROR = 'Failed to Update Paper'
+    PAPER_RENAME_SUCCESS = 'Paper Renamed Successfully'
+    PAPER_RENAME_ERROR = 'Failed to Rename Paper'
 
     # Chunk Responses
     NO_CHUNKS_CREATED = 'No Chunks Created'
@@ -32,6 +36,7 @@ class ResponseSignals(Enum):
     PROJECT_UPDATED_SUCCESS = 'Project Updated Successfully'
     PROJECT_NOT_FOUND = 'Project Not Found'
     PROJECT_CREATION_FAILED = 'Failed to Create Project'
+    PROJECT_RENAME_FAILED = 'Failed to Rename Project'
 
     #Vector DB Responses
     VDB_CONNECTION_ERROR = 'Failed to Connect to Vector DB'
@@ -54,9 +59,12 @@ class ResponseSignals(Enum):
     SUMMARY_NOT_FOUND = 'Summary Not Found'
     SUMMARY_GENERATION_FAILED = 'Failed to Generate Summary'
     SUMMARY_GENERATION_SUCCESS = 'Summary Generated Successfully'
-    SUMMARY_EXISTS = 'Summary Already Exists'
+    SUMMARY_EXISTS = 'Summary Already Exists for this Paper'
     SUMMARY_DISPLAY_ERROR = 'Failed to Display Summary'
     SUMMARY_UPDATE_ERROR = 'Failed to Update Summary'
+    SUMMARY_UPDATE_SUCCESS = 'Summary Updated Successfully'
+    SUMMARY_RENAME_SUCCESS = 'Summary Renamed Successfully'
+    SUMMARY_RENAME_ERROR = 'Failed to Rename Summary'
 
     # Translator Responses
     TRANSLATION_SUCCESS = 'Text Translated Successfully'

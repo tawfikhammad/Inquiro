@@ -10,6 +10,9 @@ class ProcessRequest(BaseModel):
 class ProjectRequest(BaseModel):
     project_title: str
 
+class SummaryRequest(BaseModel):
+    summary_name: str
+
 class PushRequest(BaseModel):
     do_reset: Optional[int] = 0
 
@@ -25,3 +28,6 @@ class TranslateRequest(BaseModel):
 class ExplainRequest(BaseModel):
     text: str
     context : str = None
+
+class RenameRequest(BaseModel):
+    new_name: str
