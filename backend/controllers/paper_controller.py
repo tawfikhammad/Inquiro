@@ -22,11 +22,9 @@ class PaperController(BaseController):
         return True, ResponseSignals.VALID_FILE.value
 
     async def paper_path(self, project_title: str, paper_name: str):
-        """Return the final PDF path and the cleaned base name"""
-        base_name = self.cleaner.filename_cleaner(paper_name)
-        filename = f"{base_name}.pdf"
-        file_path = self.path_utils.get_file_path(project_title, filename)
-        return file_path, base_name
+        paper_filename = f"{paper_name}.pdf"
+        file_path = self.path_utils.get_paper_path(project_title, paper_filename)
+        return file_path
 
     async def get_pdf_content(self, file_path: str):
         """
@@ -123,4 +121,25 @@ class PaperController(BaseController):
             return all_docs
         except Exception as e:
             logger.error(f"Error generating chunks for paper '{paper_name}': {e}")
+            raise
+
+    async def rename_paper_file(self, project_title: str, old_name: str, new_name: str):
+        try:
+            # Get paths for old and new files
+            old_path = self.path_utils.get_paper_path(project_title, f"{old_name}.pdf")
+            new_path = self.path_utils.get_paper_path(project_title, f"{new_name}.pdf")
+
+            # Rename the file
+            import os
+            os.rename(old_path, new_path)
+            logger.info(f"Paper file renamed from {old_path} to {new_path}")
+
+        except FileNotFoundError as e:
+            logger.error(f"Paper file not found: {old_path} : {e}")
+            raise
+        except FileExistsError as e:
+            logger.error(f"Paper file already exists: {new_path} : {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error renaming paper file from '{old_name}' to '{new_name}': {e}")
             raise
