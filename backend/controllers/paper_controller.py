@@ -5,6 +5,7 @@ from .base_controller import BaseController
 from utils.text_utils import Cleaner
 from bson import ObjectId
 from utils.enums import ResponseSignals
+import os
 from utils import get_logger
 logger = get_logger(__name__)
 
@@ -129,17 +130,18 @@ class PaperController(BaseController):
             old_path = self.path_utils.get_paper_path(project_title, f"{old_name}.pdf")
             new_path = self.path_utils.get_paper_path(project_title, f"{new_name}.pdf")
 
-            # Rename the file
-            import os
-            os.rename(old_path, new_path)
-            logger.info(f"Paper file renamed from {old_path} to {new_path}")
+            if os.path.exists(new_path):
+                logger.error(f"Cannot rename paper file: target file already exists: {new_path}")
+                raise FileExistsError(f"Target file already exists: {new_path}")
+            
+            if not os.path.exists(old_path):
+                logger.error(f"Cannot rename paper file: source file does not exist: {old_path}")
+                raise FileNotFoundError(f"Source file does not exist: {old_path}")
 
-        except FileNotFoundError as e:
-            logger.error(f"Paper file not found: {old_path} : {e}")
-            raise
-        except FileExistsError as e:
-            logger.error(f"Paper file already exists: {new_path} : {e}")
-            raise
+            # Rename the file
+            os.rename(old_path, new_path)
+            logger.info(f"Renamed paper file {old_name} → {new_name}")
+
         except Exception as e:
-            logger.error(f"Error renaming paper file from '{old_name}' to '{new_name}': {e}")
+            logger.error(f"Error renaming paper file {old_name} → {new_name}: {e}")
             raise

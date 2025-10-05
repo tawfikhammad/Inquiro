@@ -104,9 +104,6 @@ class SummaryController(BaseController):
                 await f.write(summary_content)
                 logger.info(f"Summary saved to {summary_path}")
 
-        except FileExistsError as e:
-            logger.error(f"File already exists: {summary_path} : {e}")
-            raise
         except Exception as e:
             logger.error(f"Error saving summary to {summary_path}: {e}")
             raise
@@ -118,21 +115,22 @@ class SummaryController(BaseController):
 
     async def rename_summary_file(self, project_title: str, old_name: str, new_name: str):
         try:
-            # Get paths for old and new summary files
             old_path = self.path_utils.get_summary_path(project_title, f"{old_name}.md")
             new_path = self.path_utils.get_summary_path(project_title, f"{new_name}.md")
 
-            # Rename the file
-            import os
+            # Validate file existence
+            if not os.path.exists(old_path):
+                logger.error(f"Summary file not found: {old_path}")
+                raise FileNotFoundError(f"Original summary file not found: {old_path}")
+
+            if os.path.exists(new_path):
+                logger.error(f"File with new name already exists: {new_path}")
+                raise FileExistsError(f"A file with new name '{new_name}' already exists.")
+
+            # Perform rename
             os.rename(old_path, new_path)
-            logger.info(f"Summary file renamed from {old_path} to {new_path}")
-        
-        except FileNotFoundError as e:
-            logger.error(f"Summary file not found: {old_path} : {e}")
-            raise 
-        except FileExistsError as e:
-            logger.error(f"File with new name already exists: {new_path} : {e}")
-            raise
+            logger.info(f"Renamed summary file {old_name} → {new_name}")
+            
         except Exception as e:
-            logger.error(f"Error renaming summary file from '{old_name}' to '{new_name}': {e}")
+            logger.error(f"Error renaming summary file {old_name} → {new_name}: {e}")
             raise
