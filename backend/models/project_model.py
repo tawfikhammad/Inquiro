@@ -70,7 +70,7 @@ class ProjectModel(BaseModel):
             logger.error(f"Error in get_or_create_project: {e}")
             raise
     
-    async def get_all_projects(self, page: int=0, limit: int=10) -> List[Project]:
+    async def get_all_projects(self, page: int=0, limit: int=10):
         try:
             cursor = self.collection.find().skip(page * limit).limit(limit)
             projects = []

@@ -29,8 +29,8 @@ async def list_projects(request: Request):
     projects = await project_model.get_all_projects()
     if not projects or len(projects) == 0:
         return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content=ResponseSignals.PROJECT_NOT_FOUND.value
+            status_code=status.HTTP_200_OK,
+            content={"message": "No projects found", "projects": []}
         )
     serialized_projects = [_serialize_project(project) for project in projects]
     return JSONResponse(
