@@ -7,6 +7,9 @@ RUN npm install
 
 COPY . .
 
+# Set environment variables
+ENV DOCKER_ENV=true
+
 EXPOSE 3000
 
 CMD ["npm", "start"]
