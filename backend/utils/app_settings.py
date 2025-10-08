@@ -1,39 +1,39 @@
 from pydantic_settings import BaseSettings
 
 class AppSettings(BaseSettings):
-    APP_NAME: str 
-    APP_VERSION: str
+    APP_NAME: str = "Inquiro"
+    APP_VERSION: str = "0.1.0"
 
-    ALLOWED_FILE_TYPES: list[str]
-    MAX_FILE_SIZE: int
-    CHUNK_SIZE: int
+    ALLOWED_FILE_TYPES: list[str] = ["application/pdf"]
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10 MB
+    CHUNK_SIZE: int = 524288  # 512 KB
 
-    MONGO_URL: str
-    MONGO_DB: str
+    MONGO_URL: str = "mongodb://admin:admin@mongodb:27017/inquiro?authSource=admin"
+    MONGO_DB: str = "inquiro"
 
     GENERATION_BACKEND: str
     EMBEDDING_BACKEND: str
     SUMMARY_BACKEND: str
-    
-    GEMINI_API_KEY: str
 
-    GENERATION_MODEL_ID: str
-    EMBEDDING_MODEL_ID: str
-    EMBEDDING_SIZE: int
-    SUMMARY_MODEL_ID: str
+    GEMINI_API_KEY: str 
 
-    DEFAULT_MAX_INPUT_CHARACTERS: int
-    DEFAULT_MAX_TOKENS: int
-    DEFAULT_TEMPERATURE: float
+    GENERATION_MODEL_ID: str = "gemini-2.0-flash"
+    EMBEDDING_MODEL_ID: str = "gemini-embedding-001"
+    EMBEDDING_SIZE: int = 1024
+    SUMMARY_MODEL_ID: str = "gemini-2.0-flash"
 
-    VECTOR_DB_BACKEND: str
-    VECTOR_DB_HOST: str
-    VECTOR_DB_PORT: int
-    VECTOR_DB_GRPC_PORT: int
-    VECTOR_DB_DISTANCE_METHOD: str
+    DEFAULT_MAX_INPUT_CHARACTERS: int = 1024
+    DEFAULT_MAX_TOKENS: int = 200
+    DEFAULT_TEMPERATURE: float = 0.1
 
-    LANG: str
-    DEFAULT_LANG: str
+    VECTOR_DB_BACKEND: str = "qdrant"
+    VECTOR_DB_HOST: str = "qdrant"
+    VECTOR_DB_PORT: int = 6333
+    VECTOR_DB_GRPC_PORT: int = 6334
+    VECTOR_DB_DISTANCE_METHOD: str = "cosine"
+
+    LANG: str = "en"
+    DEFAULT_LANG: str = "en"
 
     TRANSLATION_SUPPORTED_LANGUAGES: list[str] = ["English", "Spanish", "French", "German", "Arabic", "Italian"]
     TRANSLATION_MAX_INPUT_CHARACTERS: int = 5000
