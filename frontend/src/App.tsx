@@ -8,11 +8,12 @@ import ChatInterface from './components/ChatInterface';
 import { ragService, translatorService, explainerService } from './services';
 
 interface AppConfig {
-    generationModel: string;
-    embeddingModel: string;
+    provider: string;
+    generationModelId: string;
+    embeddingModelId: string;
+    summaryModelId: string;
     geminiApiKey: string;
-    temperature: number;
-    maxTokens: number;
+    embeddingSize: number;
 }
 
 interface Project {
