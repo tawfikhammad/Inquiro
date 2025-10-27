@@ -11,11 +11,11 @@ class AppSettings(BaseSettings):
     MONGO_URL: str = "mongodb://admin:admin@mongodb:27017/inquiro?authSource=admin"
     MONGO_DB: str = "inquiro"
 
-    GENERATION_BACKEND: str
-    EMBEDDING_BACKEND: str
-    SUMMARY_BACKEND: str
+    GENERATION_BACKEND: str = "gemini"
+    EMBEDDING_BACKEND: str = "gemini"
+    SUMMARY_BACKEND: str = "gemini"
 
-    GEMINI_API_KEY: str 
+    GEMINI_API_KEY: str = "" 
 
     GENERATION_MODEL_ID: str = "gemini-2.0-flash"
     EMBEDDING_MODEL_ID: str = "gemini-embedding-001"

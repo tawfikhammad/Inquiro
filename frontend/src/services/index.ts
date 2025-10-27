@@ -135,3 +135,41 @@ export const welcomeService = {
         return apiClient.get('/');
     }
 };
+
+export interface ConfigurationRequest {
+    generation_backend: string;
+    embedding_backend: string;
+    summary_backend: string;
+    gemini_api_key: string;
+    generation_model_id: string;
+    embedding_model_id: string;
+    embedding_size: number;
+    summary_model_id: string;
+}
+
+export interface ConfigurationResponse {
+    message: string;
+    status: string;
+}
+
+export interface ConfigurationStatus {
+    generation_backend: string;
+    embedding_backend: string;
+    summary_backend: string;
+    generation_model_id: string;
+    embedding_model_id: string;
+    embedding_size: number;
+    summary_model_id: string;
+    gemini_api_key_configured: boolean;
+    status: 'configured' | 'not_configured';
+}
+
+export const configService = {
+    async configure(config: ConfigurationRequest): Promise<ConfigurationResponse> {
+        return apiClient.post('/api/config/configure', config);
+    },
+
+    async getStatus(): Promise<ConfigurationStatus> {
+        return apiClient.get('/api/config/configuration');
+    }
+};

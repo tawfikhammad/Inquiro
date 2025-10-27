@@ -84,42 +84,50 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
     return (
         <div className="container">
             <div className="card">
-                <h1 style={{ textAlign: 'center', marginBottom: '30px', color: '#333' }}>
-                    Select Workspace
-                </h1>
+                <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+                    <h1 style={{ margin: '0 0 10px 0', color: '#333' }}>
+                        Welcome to Inquiro
+                    </h1>
+                    <p style={{ color: '#666', fontSize: '16px', margin: 0 }}>
+                        Select an existing workspace or create a new one to get started
+                    </p>
+                </div>
 
                 {error && <div className="error">{error}</div>}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h2>Your Projects</h2>
+                    <h2 style={{ margin: 0 }}>Your Workspaces</h2>
                     <button
                         className="btn btn-primary"
                         onClick={() => setShowCreateForm(true)}
-                        disabled={isLoading}
+                        disabled={isLoading || showCreateForm}
                     >
-                        + New Project
+                        + Create New Workspace
                     </button>
                 </div>
 
                 {showCreateForm && (
-                    <div className="card" style={{ marginBottom: '20px', backgroundColor: '#f8f9fa' }}>
-                        <h3>Create New Project</h3>
+                    <div className="card" style={{ marginBottom: '20px', backgroundColor: '#f8f9fa', border: '2px solid #007bff' }}>
+                        <h3 style={{ marginTop: 0 }}>Create New Workspace</h3>
                         <form onSubmit={handleCreateProject}>
                             <div className="form-group">
-                                <label className="form-label">Project Name</label>
+                                <label className="form-label">Workspace Name</label>
                                 <input
                                     type="text"
                                     className="form-control"
                                     value={newProjectTitle}
                                     onChange={(e) => setNewProjectTitle(e.target.value)}
-                                    placeholder="Enter project name"
+                                    placeholder="e.g., Machine Learning Research, PhD Thesis, etc."
                                     required
                                     autoFocus
                                 />
+                                <small style={{ color: '#666', fontSize: '12px' }}>
+                                    Give your workspace a descriptive name to organize your papers and research
+                                </small>
                             </div>
                             <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                                    {isLoading ? 'Creating...' : 'Create Project'}
+                                    {isLoading ? 'Creating...' : 'Create Workspace'}
                                 </button>
                                 <button
                                     type="button"
@@ -127,6 +135,7 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
                                     onClick={() => {
                                         setShowCreateForm(false);
                                         setNewProjectTitle('');
+                                        setError(null);
                                     }}
                                     disabled={isLoading}
                                 >
@@ -138,20 +147,36 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
                 )}
 
                 {isLoading && projects.length === 0 ? (
-                    <div className="loading">Loading projects...</div>
-                ) : projects.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                        <p>No projects found. Create your first project to get started!</p>
+                    <div className="loading">Loading workspaces...</div>
+                ) : projects.length === 0 && !showCreateForm ? (
+                    <div style={{
+                        textAlign: 'center',
+                        padding: '60px 40px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '8px',
+                        border: '2px dashed #ddd'
+                    }}>
+                        <h3 style={{ color: '#333', marginBottom: '10px' }}>No Workspaces Yet</h3>
+                        <p style={{ color: '#666', marginBottom: '20px' }}>
+                            Create your first workspace to start organizing and analyzing research papers
+                        </p>
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => setShowCreateForm(true)}
+                            style={{ fontSize: '16px', padding: '10px 30px' }}
+                        >
+                            + Create Your First Workspace
+                        </button>
                     </div>
-                ) : (
+                ) : projects.length > 0 ? (
                     <div style={{ display: 'grid', gap: '15px' }}>
                         {projects.map((project) => (
                             <div
                                 key={project._id}
                                 className="card"
                                 style={{
-                                    padding: '15px',
-                                    border: '1px solid #ddd',
+                                    padding: '20px',
+                                    border: '2px solid #ddd',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                     backgroundColor: '#fff'
@@ -159,12 +184,14 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = '#f8f9fa';
                                     e.currentTarget.style.transform = 'translateY(-2px)';
-                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                    e.currentTarget.style.borderColor = '#007bff';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = '#fff';
                                     e.currentTarget.style.transform = 'translateY(0)';
                                     e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                                    e.currentTarget.style.borderColor = '#ddd';
                                 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -172,8 +199,8 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
                                         style={{ flex: 1 }}
                                         onClick={() => onProjectSelect(project)}
                                     >
-                                        <h3 style={{ margin: '0 0 5px 0', color: '#333' }}>
-                                            {project.project_title}
+                                        <h3 style={{ margin: '0 0 8px 0', color: '#333', fontSize: '20px' }}>
+                                            📁 {project.project_title}
                                         </h3>
                                         <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
                                             Created: {formatDate(project.created_at)}
@@ -186,15 +213,16 @@ const WorkspacePage: React.FC<WorkspacePageProps> = ({ onProjectSelect }) => {
                                             handleDeleteProject(project._id);
                                         }}
                                         disabled={isLoading}
-                                        style={{ marginLeft: '10px' }}
+                                        style={{ marginLeft: '15px' }}
+                                        title="Delete this workspace"
                                     >
-                                        Delete
+                                        🗑️ Delete
                                     </button>
                                 </div>
                             </div>
                         ))}
                     </div>
-                )}
+                ) : null}
             </div>
         </div>
     );

@@ -1,20 +1,9 @@
 import React from 'react';
-import ConfigurationPage from './pages/ConfigurationPage';
 import WorkspacePage from './pages/WorkspacePage';
-import DashboardPage from './pages/DashboardPage';
 import FileExplorer from './components/FileExplorer';
 import ContentViewer from './components/ContentViewer';
 import ChatInterface from './components/ChatInterface';
 import { ragService, translatorService, explainerService } from './services';
-
-interface AppConfig {
-    provider: string;
-    generationModelId: string;
-    embeddingModelId: string;
-    summaryModelId: string;
-    geminiApiKey: string;
-    embeddingSize: number;
-}
 
 interface Project {
     _id: string;
@@ -23,38 +12,11 @@ interface Project {
     updated_at?: string;
 }
 
-type AppState = 'configuration' | 'workspace' | 'dashboard';
+type AppState = 'workspace' | 'dashboard';
 
 const App: React.FC = () => {
-    const [currentState, setCurrentState] = React.useState<AppState>('configuration');
-    const [config, setConfig] = React.useState<AppConfig | null>(null);
+    const [currentState, setCurrentState] = React.useState<AppState>('workspace');
     const [currentProject, setCurrentProject] = React.useState<Project | null>(null);
-
-    // Check for existing configuration on mount
-    React.useEffect(() => {
-        const savedConfig = localStorage.getItem('inquiro-config');
-        if (savedConfig) {
-            try {
-                const parsedConfig = JSON.parse(savedConfig);
-                setConfig(parsedConfig);
-                setCurrentState('workspace');
-            } catch (err) {
-                console.error('Failed to parse saved configuration:', err);
-                localStorage.removeItem('inquiro-config');
-            }
-        }
-
-        // Listen for configuration updates
-        const handleConfigSaved = (event: CustomEvent) => {
-            setConfig(event.detail);
-            setCurrentState('workspace');
-        };
-
-        window.addEventListener('config-saved', handleConfigSaved as EventListener);
-        return () => {
-            window.removeEventListener('config-saved', handleConfigSaved as EventListener);
-        };
-    }, []);
 
     const handleProjectSelect = (project: Project) => {
         setCurrentProject(project);
@@ -64,13 +26,6 @@ const App: React.FC = () => {
     const handleBackToWorkspace = () => {
         setCurrentProject(null);
         setCurrentState('workspace');
-    };
-
-    const handleResetConfiguration = () => {
-        setConfig(null);
-        setCurrentProject(null);
-        localStorage.removeItem('inquiro-config');
-        setCurrentState('configuration');
     };
 
     // Enhanced Dashboard with proper component integration
@@ -139,14 +94,6 @@ const App: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={handleResetConfiguration}
-                            style={{ fontSize: '12px' }}
-                        >
-                            ⚙️ Settings
-                        </button>
-
                         {isIndexed ? (
                             <span style={{ color: '#28a745', fontSize: '14px' }}>
                                 ✓ Indexed ({indexInfo?.vectors_count || 0} vectors)
@@ -436,9 +383,6 @@ const App: React.FC = () => {
 
     // Render appropriate component based on current state
     switch (currentState) {
-        case 'configuration':
-            return <ConfigurationPage />;
-
         case 'workspace':
             return <WorkspacePage onProjectSelect={handleProjectSelect} />;
 
@@ -453,7 +397,7 @@ const App: React.FC = () => {
             );
 
         default:
-            return <ConfigurationPage />;
+            return <WorkspacePage onProjectSelect={handleProjectSelect} />;
     }
 };
 
