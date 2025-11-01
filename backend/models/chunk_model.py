@@ -88,6 +88,35 @@ class ChunkModel(BaseModel):
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}: {e}")
             raise
 
+    async def get_chunks_grouped_by_section(self, paper_id: str):
+
+        try:
+            # Fetch all chunks for the paper, sorted by index
+            records = await self.collection.find({
+                "chunk_paper_id": ObjectId(paper_id)
+            }).sort("chunk_index_in_paper", 1).to_list(length=None)
+            
+            if not records or len(records) == 0:
+                logger.info(f"No chunks found for paper {paper_id}")
+                return {}
+            
+            # Group chunks by section_id
+            sections = {}
+            for record in records:
+                chunk = Chunk(**record)
+                section_id = str(chunk.chunk_section_id)
+                
+                if section_id not in sections:
+                    sections[section_id] = []
+                sections[section_id].append(chunk)
+            
+            logger.info(f"Found {len(records)} chunks in {len(sections)} sections for paper {paper_id}")
+            return sections
+            
+        except Exception as e:
+            logger.error(f"Error fetching chunks grouped by section for paper {paper_id}: {e}")
+            raise
+
     async def delete_project_chunks(self, chunks_project_id: str):
         try:
             result = await self.collection.delete_many({
