@@ -6,3 +6,4 @@ class DatabaseEnums(Enum):
     CHUNK_COLLECTION_NAME = "chunks"
     PAPER_COLLECTION_NAME = "papers"
     SUMMARY_COLLECTION_NAME = "summaries"
+    USER_COLLECTION_NAME = "users"
