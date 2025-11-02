@@ -1,15 +1,16 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+from bson.objectid import ObjectId
 from datetime import datetime
 
 class User(BaseModel):
     """User schema in database."""
+    id: Optional[ObjectId] = Field(None, alias="_id")
     username: str
     email: EmailStr
     hashed_password: str
     created_at: datetime
     updated_at: datetime
-    is_active: bool = True
 
     @classmethod
     def get_indexes(cls):
