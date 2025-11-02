@@ -10,7 +10,7 @@ explainer_router = APIRouter()
 
 @explainer_router.post("/explain")
 async def explain_text(request: Request, explain_request: ExplainRequest):
-    logger.info(f"Explanation request received")
+    logger.info(f"Incoming request to explain text")
 
     try:
         explain_controller = ExplainController(
