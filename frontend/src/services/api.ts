@@ -1,5 +1,5 @@
 // Simple API client without external dependencies
-const API_BASE_URL = '';
+const API_BASE_URL = 'http://localhost:5000';
 
 class ApiClient {
     private baseURL: string;
@@ -63,6 +63,22 @@ class ApiClient {
         });
     }
 
+    async postfile<T>(endpoint: string, file: File, options?: RequestInit): Promise<T> {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // 🪵 Log all key-value pairs before sending
+        // Use FormData.forEach to avoid downlevelIteration/target TS issues
+        formData.forEach((value, key) => {
+            console.log(key, value);
+        });
+        return this.request<T>(endpoint, {
+            ...options,
+            method: 'POST',
+            body: formData,
+        });
+    }
+
     async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
         return this.request<T>(endpoint, {
             ...options,
@@ -86,6 +102,7 @@ class ApiClient {
             headers: {
                 // Don't set Content-Type for FormData, let browser set it
                 ...options?.headers,
+                "Content-Type": "multipart/form-data; boundary=<calculated when request is sent>",
             },
         });
     }

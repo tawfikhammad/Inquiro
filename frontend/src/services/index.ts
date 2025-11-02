@@ -12,7 +12,7 @@ import {
 
 export const projectService = {
     async getAll(): Promise<Project[]> {
-        return apiClient.get('/projects/');
+        return apiClient.get('/projects');
     },
 
     async getById(id: string): Promise<Project> {
