@@ -1,10 +1,12 @@
-// Simple API client without external dependencies
-const API_BASE_URL = 'http://localhost:5000';
+import { API_BASE_URL } from '@/config/api';
 
+/**
+ * API Client for making HTTP requests to the backend
+ */
 class ApiClient {
     private baseURL: string;
 
-    constructor(baseURL: string = API_BASE_URL) {
+    constructor(baseURL: string) {
         this.baseURL = baseURL;
     }
 
@@ -14,14 +16,10 @@ class ApiClient {
     ): Promise<T> {
         const url = `${this.baseURL}${endpoint}`;
 
-        const defaultHeaders = {
-            'Content-Type': 'application/json',
-        };
-
         const config: RequestInit = {
             ...options,
             headers: {
-                ...defaultHeaders,
+                'Content-Type': 'application/json',
                 ...options.headers,
             },
         };
@@ -30,82 +28,74 @@ class ApiClient {
             const response = await fetch(url, config);
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({
-                    message: `HTTP error! status: ${response.status}`
-                }));
-                throw new Error(errorData.message || errorData.detail || 'Request failed');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
 
-            // Handle different response types
+            // Handle empty responses
             const contentType = response.headers.get('content-type');
-            if (contentType?.includes('application/json')) {
+            if (contentType && contentType.includes('application/json')) {
                 return await response.json();
-            } else if (contentType?.includes('text/')) {
-                return await response.text() as T;
-            } else {
-                return await response.blob() as T;
             }
+
+            return {} as T;
         } catch (error) {
-            console.error(`API request failed: ${config.method} ${url}`, error);
+            console.error('API request failed:', error);
             throw error;
         }
     }
 
-    async get<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        return this.request<T>(endpoint, { ...options, method: 'GET' });
+    async get<T>(endpoint: string): Promise<T> {
+        return this.request<T>(endpoint, { method: 'GET' });
     }
 
-    async post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+    async post<T>(endpoint: string, data?: unknown): Promise<T> {
         return this.request<T>(endpoint, {
-            ...options,
             method: 'POST',
-            body: data ? JSON.stringify(data) : undefined,
+            body: JSON.stringify(data),
         });
     }
 
-    async postfile<T>(endpoint: string, file: File, options?: RequestInit): Promise<T> {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        // 🪵 Log all key-value pairs before sending
-        // Use FormData.forEach to avoid downlevelIteration/target TS issues
-        formData.forEach((value, key) => {
-            console.log(key, value);
-        });
+    async put<T>(endpoint: string, data?: unknown): Promise<T> {
         return this.request<T>(endpoint, {
-            ...options,
-            method: 'POST',
-            body: formData,
-        });
-    }
-
-    async put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
-        return this.request<T>(endpoint, {
-            ...options,
             method: 'PUT',
-            body: data ? JSON.stringify(data) : undefined,
+            body: JSON.stringify(data),
         });
     }
 
-    async delete<T>(endpoint: string, options?: RequestInit): Promise<T> {
-        return this.request<T>(endpoint, { ...options, method: 'DELETE' });
+    async delete<T>(endpoint: string): Promise<T> {
+        return this.request<T>(endpoint, { method: 'DELETE' });
     }
 
-    async upload<T>(endpoint: string, file: File, options?: RequestInit): Promise<T> {
+    async uploadFile<T>(endpoint: string, file: File, additionalData?: Record<string, string>): Promise<T> {
         const formData = new FormData();
         formData.append('file', file);
 
-        return this.request<T>(endpoint, {
-            ...options,
-            method: 'POST',
-            body: formData,
-            headers: {
-                // Don't set Content-Type for FormData, let browser set it
-                ...options?.headers,
-                "Content-Type": "multipart/form-data; boundary=<calculated when request is sent>",
-            },
-        });
+        if (additionalData) {
+            Object.entries(additionalData).forEach(([key, value]) => {
+                formData.append(key, value);
+            });
+        }
+
+        const url = `${this.baseURL}${endpoint}`;
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('File upload failed:', error);
+            throw error;
+        }
     }
 }
 
-export const apiClient = new ApiClient();
+export const apiClient = new ApiClient(API_BASE_URL);
