@@ -57,13 +57,13 @@ class ProjectModel(BaseModel):
             logger.error(f"Error retrieving project {project_id}: {e}")
             raise
     
-    async def get_or_create_project(self, project: Project) -> Project:
+    async def get_or_create_project(self, Project: Project) -> Project:
         """Get a project by its project_id and if the project does not exist, create one"""
         try:
-            project = await self.get_project_by_name(project.project_title)
+            project = await self.get_project_by_name(Project.project_title)
             if not project:
-                logger.info(f"Creating new project with title: {project.project_title}")
-                project = await self.create_project(project)
+                logger.info(f"Creating new project with title: {Project.project_title}")
+                project = await self.create_project(Project)
                 return project
             return project
         except Exception as e:
