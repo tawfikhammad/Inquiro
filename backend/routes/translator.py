@@ -11,7 +11,7 @@ translator_router = APIRouter()
 
 @translator_router.post("/translate")
 async def translate_text(request: Request, translate_request: TranslateRequest):
-    logger.info(f"Translation request received - Target: {translate_request.target_language}")
+    logger.info("Incoming request to translate text")
 
     try:
         translator_controller = TranslatorController(
