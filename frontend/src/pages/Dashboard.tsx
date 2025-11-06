@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BookOpen, Plus, FolderOpen, Settings, LogOut, Loader2, FileText, File } from "lucide-react";
+import { BookOpen, Plus, FolderOpen, Settings, LogOut, Loader2, FileText, File, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects, useCreateProject } from "@/hooks/useProjects";
+import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
 import { apiClient } from "@/services/api";
 
 interface ProjectAssets {
@@ -23,6 +23,7 @@ export default function Dashboard() {
     const [projectAssets, setProjectAssets] = useState<Record<string, ProjectAssets>>({});
     const { data: projects, isLoading, error } = useProjects();
     const createProject = useCreateProject();
+    const deleteProject = useDeleteProject();
 
     useEffect(() => {
         const fetchAssets = async () => {
@@ -53,6 +54,28 @@ export default function Dashboard() {
             setNewProjectName("");
         } catch (error) {
             toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to create workspace.", variant: "destructive" });
+        }
+    };
+
+    const handleDeleteWorkspace = async (e: React.MouseEvent, projectId: string, projectName: string) => {
+        e.stopPropagation(); // Prevent card click navigation
+
+        if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await deleteProject.mutateAsync(projectId);
+            toast({
+                title: "Success",
+                description: "Workspace deleted successfully!"
+            });
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: error instanceof Error ? error.message : "Failed to delete workspace.",
+                variant: "destructive"
+            });
         }
     };
 
@@ -89,7 +112,7 @@ export default function Dashboard() {
                         {projects?.map((project, index) => {
                             const assets = projectAssets[project._id] || { papers: 0, summaries: 0 };
                             return (
-                                <Card key={project._id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => navigate(`/workspace/${project._id}`)}>
+                                <Card key={project._id} className="hover:shadow-lg transition-all cursor-pointer group relative" onClick={() => navigate(`/workspace/${project._id}`)}>
                                     <CardHeader>
                                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-2">
                                             <FolderOpen className="w-6 h-6 text-primary" />
@@ -108,6 +131,16 @@ export default function Dashboard() {
                                                 <span className="font-semibold text-accent">{assets.summaries}</span>
                                             </div>
                                         </div>
+                                        {/* Delete button in bottom right corner */}
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                            onClick={(e) => handleDeleteWorkspace(e, project._id, project.project_title)}
+                                            disabled={deleteProject.isPending}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
                                     </CardContent>
                                 </Card>
                             );
