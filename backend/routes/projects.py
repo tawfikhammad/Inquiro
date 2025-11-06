@@ -18,6 +18,19 @@ def _serialize_project(project):
     project_dict["_id"] = str(project_dict["_id"])
     return project_dict
 
+def _serialize_paper(paper):
+    paper_dict = paper.dict(by_alias=True, exclude_unset=True)
+    paper_dict["_id"] = str(paper_dict["_id"])
+    paper_dict["paper_project_id"] = str(paper_dict["paper_project_id"])
+    return paper_dict
+
+def _serialize_summary(summary):
+    summary_dict = summary.dict(by_alias=True, exclude_unset=True)
+    summary_dict["_id"] = str(summary_dict["_id"])
+    summary_dict["summary_project_id"] = str(summary_dict["summary_project_id"])
+    summary_dict["summary_paper_id"] = str(summary_dict["summary_paper_id"])
+    return summary_dict
+
 project_router = APIRouter()
 
 #List all projects in the database.
@@ -92,14 +105,14 @@ async def get_project_assets(request: Request, project_id: str):
     summary_model = await SummaryModel.get_instance(db_client=request.app.mongodb_client)
     summaries = await summary_model.get_project_summaries(summaries_project_id=project_id)
     
-    papers_response = [paper.dict(by_alias=True, exclude_unset=True) for paper in papers]
-    summaries_response = [summary.dict(by_alias=True, exclude_unset=True) for summary in summaries]
-    
+    papers_response = [_serialize_paper(paper) for paper in papers]
+    summaries_response = [_serialize_summary(summary) for summary in summaries]
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "papers number": len(papers_response),
-            "summaries number": len(summaries_response)
+            "papers": papers_response,
+            "summaries": summaries_response
         }
     )
 
@@ -124,7 +137,8 @@ async def delete_all_projects(request: Request):
     logger.info("All projects and associated data deleted.")
 
     # Delete library directory
-    library_folder = PathUtils.library_dir    # assets/library/
+    path_utils = PathUtils()
+    library_folder = path_utils.library_dir    # assets/library/
     if Path(library_folder).exists():
         logger.info(f"Deleting library directory: {library_folder}")
         await asyncio.to_thread(shutil.rmtree, library_folder, ignore_errors=True)
@@ -160,7 +174,8 @@ async def delete_project(request: Request, project_id: str):
     logger.info(f"Project and associated data deleted: {project_id}")
 
     # Delete project folder from filesystem
-    project_folder = PathUtils.get_project_dir(project.project_title) # assets/library/{project_title}
+    path_utils = PathUtils()
+    project_folder, _, _ = path_utils.get_project_dir(project.project_title)
     if Path(project_folder).exists():
         logger.info(f"Deleting project folder: {project_folder}")
         await asyncio.to_thread(shutil.rmtree, project_folder, ignore_errors=True)
@@ -190,8 +205,9 @@ async def rename_project(request: Request, project_id: str, rename_request: Rena
             detail=f"Project with title '{rename_request.new_name}' already exists. Please choose another title."
         )
     
-    old_project_path = PathUtils.get_project_dir(project.project_title)    # assets/library/{project_title}
-    new_project_path = PathUtils.get_project_dir(rename_request.new_name)
+    path_utils = PathUtils()
+    old_project_path, _, _ = path_utils.get_project_dir(project.project_title)    # assets/library/{project_title}
+    new_project_path, _, _ = path_utils.get_project_dir(rename_request.new_name)
 
     if Path(new_project_path).exists():
         raise HTTPException(
