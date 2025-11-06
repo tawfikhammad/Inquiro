@@ -42,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePapers, useUploadPaper, useDeletePaper } from "@/hooks/usePapers";
 import { useSummaries, useGenerateSummary, useDeleteSummary } from "@/hooks/useSummaries";
 import { useChat } from "@/hooks/useChat";
+import { useProject } from "@/hooks/useProjects";
 import { translatorService, explainerService } from "@/services";
 import type { Paper, Summary } from "@/types/api";
 
@@ -49,6 +50,9 @@ const Workspace = () => {
     const { workspaceId } = useParams();
     const { toast } = useToast();
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Fetch project details
+    const { data: project } = useProject(workspaceId || "");
 
     // Fetch papers and summaries from API
     const { data: papers, isLoading: loadingPapers, error: papersError } = usePapers(workspaceId || "");
@@ -354,7 +358,11 @@ const Workspace = () => {
                                 Inquiro
                             </span>
                         </Link>
-                        <span className="text-sm text-muted-foreground">Workspace #{workspaceId?.slice(0, 8)}</span>
+                    </div>
+                    <div className="absolute left-1/2 transform -translate-x-1/2">
+                        <h1 className="text-lg font-semibold text-foreground">
+                            {project?.project_title ? `${project.project_title} Workspace` : "Loading..."}
+                        </h1>
                     </div>
                 </div>
             </header>

@@ -12,6 +12,9 @@ class User(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    class Config:
+        arbitrary_types_allowed = True
+        
     @classmethod
     def get_indexes(cls):
         return [
