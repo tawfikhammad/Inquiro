@@ -12,6 +12,13 @@ class User(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda v: v.isoformat()
+        }
+
     @classmethod
     def get_indexes(cls):
         return [
