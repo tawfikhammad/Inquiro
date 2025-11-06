@@ -171,7 +171,7 @@ async def delete_paper(request: Request, project_id: str, paper_id: str):
 
     # Delete the paper embeddings from the vector database
     collection_name = f"collection_{project_id}".strip()
-    await request.app.qdrant_provider.delete_paper_embeddings(collection_name=collection_name, paper_id=paper_id)
+    await request.app.vectordb_client.delete_paper_embeddings(collection_name=collection_name, paper_id=paper_id)
     logger.info(f"Deleted paper and associated chunks and embeddings: {paper_id}")
     
     # Delete the paper file from the filesystem
