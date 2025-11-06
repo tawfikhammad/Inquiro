@@ -1,6 +1,5 @@
-from pymongo import InsertOne
 from .base_model import BaseModel
-from .db_schemas import Chunk, Project
+from .db_schemas import Chunk
 from bson import ObjectId
 from typing import List
 from utils.enums import DatabaseEnums

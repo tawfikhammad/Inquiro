@@ -8,7 +8,7 @@ class AppSettings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10 MB
     CHUNK_SIZE: int = 524288  # 512 KB
 
-    MONGO_URL: str = "mongodb://admin:admin@mongodb:27017/inquiro?authSource=admin"
+    MONGO_URL: str = "mongodb://admin:admin@localhost:27017/inquiro?authSource=admin"
     MONGO_DB: str = "inquiro"
 
     GENERATION_BACKEND: str = "gemini"
@@ -27,7 +27,7 @@ class AppSettings(BaseSettings):
     DEFAULT_TEMPERATURE: float = 0.1
 
     VECTOR_DB_BACKEND: str = "qdrant"
-    VECTOR_DB_HOST: str = "qdrant"
+    VECTOR_DB_HOST: str = "localhost"
     VECTOR_DB_PORT: int = 6333
     VECTOR_DB_GRPC_PORT: int = 6334
     VECTOR_DB_DISTANCE_METHOD: str = "cosine"

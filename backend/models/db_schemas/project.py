@@ -9,9 +9,15 @@ class Project(BaseModel):
     project_created_at: datetime = Field(default_factory=datetime.utcnow)
 
     @validator('project_title')
-    def project_id_validator(cls, v):
-        if not v.isalnum():
-            raise ValueError('Project ID must be alphanumeric')
+    def project_title_validator(cls, v):
+        # Allow alphanumeric, spaces, hyphens, and underscores
+        # Strip leading/trailing whitespace
+        v = v.strip()
+        if not v:
+            raise ValueError('Project title cannot be empty')
+        # Check if contains at least some valid characters
+        if not any(c.isalnum() for c in v):
+            raise ValueError('Project title must contain at least one alphanumeric character')
         return v
     
     class Config:
