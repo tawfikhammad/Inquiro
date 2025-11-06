@@ -2,7 +2,6 @@ from AI.LLM import LLMProviderFactory, TemplateParser
 from AI.VectorDB import VDBProviderFactory
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from routes import welcome, paper, projects, rag, summary, translator, explainer
@@ -22,6 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.on_event("startup")
 async def startup_db():
     settings= get_settings()

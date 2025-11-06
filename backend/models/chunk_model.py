@@ -1,6 +1,5 @@
-from pymongo import InsertOne
 from .base_model import BaseModel
-from .db_schemas import Chunk, Project
+from .db_schemas import Chunk
 from bson import ObjectId
 from typing import List
 from utils.enums import DatabaseEnums
@@ -86,6 +85,28 @@ class ChunkModel(BaseModel):
             return [Chunk(**record)for record in records]
         except Exception as e:
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}: {e}")
+            raise
+
+    async def get_chunks_grouped_by_section(self, chunks_paper_id: str):
+        """Get chunks for a paper grouped by section."""
+        try:
+            chunks = await self.get_paper_chunks(chunks_paper_id)
+            if not chunks:
+                logger.info(f"No chunks to group for paper {chunks_paper_id}")
+                return {}
+            
+            # Group chunks by section
+            grouped_chunks = {}
+            for chunk in chunks:
+                section = chunk.chunk_section if hasattr(chunk, 'chunk_section') and chunk.chunk_section else "General"
+                if section not in grouped_chunks:
+                    grouped_chunks[section] = []
+                grouped_chunks[section].append(chunk)
+            
+            logger.info(f"Grouped {len(chunks)} chunks into {len(grouped_chunks)} sections for paper {chunks_paper_id}")
+            return grouped_chunks
+        except Exception as e:
+            logger.error(f"Error grouping chunks by section for paper {chunks_paper_id}: {e}")
             raise
 
     async def delete_project_chunks(self, chunks_project_id: str):
