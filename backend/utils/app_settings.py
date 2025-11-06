@@ -37,10 +37,12 @@ class AppSettings(BaseSettings):
 
     TRANSLATION_SUPPORTED_LANGUAGES: list[str] = ["English", "Spanish", "French", "German", "Arabic", "Italian"]
     TRANSLATION_MAX_INPUT_CHARACTERS: int = 5000
-
+    
+    # Authentication settings
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
+    
     class Config:
         env_file = "backend/.env"  
 

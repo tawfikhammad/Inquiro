@@ -87,26 +87,33 @@ class ChunkModel(BaseModel):
             logger.error(f"Error fetching chunks for paper {chunks_paper_id}: {e}")
             raise
 
-    async def get_chunks_grouped_by_section(self, chunks_paper_id: str):
-        """Get chunks for a paper grouped by section."""
+    async def get_chunks_grouped_by_section(self, paper_id: str):
+
         try:
-            chunks = await self.get_paper_chunks(chunks_paper_id)
-            if not chunks:
-                logger.info(f"No chunks to group for paper {chunks_paper_id}")
+            # Fetch all chunks for the paper, sorted by index
+            records = await self.collection.find({
+                "chunk_paper_id": ObjectId(paper_id)
+            }).sort("chunk_index_in_paper", 1).to_list(length=None)
+            
+            if not records or len(records) == 0:
+                logger.info(f"No chunks found for paper {paper_id}")
                 return {}
             
-            # Group chunks by section
-            grouped_chunks = {}
-            for chunk in chunks:
-                section = chunk.chunk_section if hasattr(chunk, 'chunk_section') and chunk.chunk_section else "General"
-                if section not in grouped_chunks:
-                    grouped_chunks[section] = []
-                grouped_chunks[section].append(chunk)
+            # Group chunks by section_id
+            sections = {}
+            for record in records:
+                chunk = Chunk(**record)
+                section_id = str(chunk.chunk_section_id)
+                
+                if section_id not in sections:
+                    sections[section_id] = []
+                sections[section_id].append(chunk)
             
-            logger.info(f"Grouped {len(chunks)} chunks into {len(grouped_chunks)} sections for paper {chunks_paper_id}")
-            return grouped_chunks
+            logger.info(f"Found {len(records)} chunks in {len(sections)} sections for paper {paper_id}")
+            return sections
+            
         except Exception as e:
-            logger.error(f"Error grouping chunks by section for paper {chunks_paper_id}: {e}")
+            logger.error(f"Error fetching chunks grouped by section for paper {paper_id}: {e}")
             raise
 
     async def delete_project_chunks(self, chunks_project_id: str):

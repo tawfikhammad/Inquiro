@@ -1,5 +1,16 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
+
+class RegisterRequest(BaseModel):
+    """Schema for user registration."""
+    username: str = Field(..., min_length=3, max_length=50, description="Username")
+    email: EmailStr = Field(..., description="Email address")
+    password: str = Field(..., min_length=6, max_length=100, description="Password")
+
+class LoginRequest(BaseModel):
+    """Schema for user login."""
+    username: str = Field(..., description="Username or email")
+    password: str = Field(..., description="Password")
 
 class ProcessRequest(BaseModel):
     file_id: str = None

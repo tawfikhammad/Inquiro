@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from routes import welcome, paper, projects, rag, summary, translator, explainer
+from routes import welcome, paper, projects, rag, summary, translator, explainer, auth
 from utils import get_settings, get_logger
 logger = get_logger(__name__)
 
@@ -56,7 +56,7 @@ async def shutdown_db():
     await app.vectordb_client.disconnect()
 
 
-#app.include_router(auth.router)
+app.include_router(auth.auth_router, prefix="/auth", tags=["authentication"])
 app.include_router(welcome.welcome_router, prefix="", tags=["welcome"])
 app.include_router(projects.project_router, prefix="/projects", tags=["projects"])
 app.include_router(paper.paper_router, prefix="/projects/{project_id}/papers", tags=["papers"])
