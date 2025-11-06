@@ -4,10 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { BookOpen, Plus, FolderOpen, Settings, LogOut, Loader2, FileText, File } from "lucide-react";
+import { BookOpen, Plus, FolderOpen, Settings, LogOut, Loader2, FileText, File, Trash2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useProjects, useCreateProject } from "@/hooks/useProjects";
+import { useProjects, useCreateProject, useDeleteProject } from "@/hooks/useProjects";
 import { apiClient } from "@/services/api";
 
 interface ProjectAssets {
@@ -19,10 +19,13 @@ export default function Dashboard() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState<{ id: string; name: string } | null>(null);
     const [newProjectName, setNewProjectName] = useState("");
     const [projectAssets, setProjectAssets] = useState<Record<string, ProjectAssets>>({});
     const { data: projects, isLoading, error } = useProjects();
     const createProject = useCreateProject();
+    const deleteProject = useDeleteProject();
 
     useEffect(() => {
         const fetchAssets = async () => {
@@ -56,6 +59,24 @@ export default function Dashboard() {
         }
     };
 
+    const handleDeleteWorkspace = async () => {
+        if (!projectToDelete) return;
+        try {
+            await deleteProject.mutateAsync(projectToDelete.id);
+            toast({ title: "Success", description: `Workspace "${projectToDelete.name}" deleted successfully!` });
+            setIsDeleteDialogOpen(false);
+            setProjectToDelete(null);
+        } catch (error) {
+            toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to delete workspace.", variant: "destructive" });
+        }
+    };
+
+    const openDeleteDialog = (e: React.MouseEvent, projectId: string, projectName: string) => {
+        e.stopPropagation();
+        setProjectToDelete({ id: projectId, name: projectName });
+        setIsDeleteDialogOpen(true);
+    };
+
     return (
         <div className="min-h-screen bg-background">
             <header className="border-b border-border bg-card">
@@ -68,9 +89,6 @@ export default function Dashboard() {
                             <span className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">Inquiro</span>
                         </Link>
                         <div className="flex items-center gap-4">
-                            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
-                                <Plus className="w-4 h-4 mr-2" />Create Workspace
-                            </Button>
                             <Button variant="ghost" size="icon"><Settings className="w-5 h-5" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => navigate("/")}><LogOut className="w-5 h-5" /></Button>
                         </div>
@@ -78,8 +96,13 @@ export default function Dashboard() {
                 </div>
             </header>
             <main className="container mx-auto px-4 py-12">
-                <div className="mb-12 animate-fade-in">
-                    <h1 className="text-4xl font-bold mb-2">Your Workspaces</h1>
+                <div className="mb-8 animate-fade-in">
+                    <div className="flex items-center justify-between mb-2">
+                        <h1 className="text-4xl font-bold">Your Workspaces</h1>
+                        <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
+                            <Plus className="w-4 h-4 mr-2" />Create Workspace
+                        </Button>
+                    </div>
                     <p className="text-muted-foreground text-lg">Select a workspace to start managing your research papers</p>
                 </div>
                 {isLoading && <div className="flex items-center justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}
@@ -91,11 +114,23 @@ export default function Dashboard() {
                             return (
                                 <Card key={project._id} className="hover:shadow-lg transition-all cursor-pointer group" onClick={() => navigate(`/workspace/${project._id}`)}>
                                     <CardHeader>
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-2">
-                                            <FolderOpen className="w-6 h-6 text-primary" />
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center mb-2">
+                                                    <FolderOpen className="w-6 h-6 text-primary" />
+                                                </div>
+                                                <CardTitle className="group-hover:text-primary transition-colors">{project.project_title}</CardTitle>
+                                                <CardDescription>{project.created_at ? `Created ${new Date(project.created_at).toLocaleDateString()}` : 'Research workspace'}</CardDescription>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                                                onClick={(e) => openDeleteDialog(e, project._id, project.project_title)}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
                                         </div>
-                                        <CardTitle className="group-hover:text-primary transition-colors">{project.project_title}</CardTitle>
-                                        <CardDescription>{project.created_at ? `Created ${new Date(project.created_at).toLocaleDateString()}` : 'Research workspace'}</CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="space-y-2">
@@ -143,6 +178,28 @@ export default function Dashboard() {
                         <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
                         <Button onClick={handleCreateWorkspace} disabled={createProject.isPending} className="bg-blue-600 hover:bg-blue-700 text-white">
                             {createProject.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Create Workspace
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Workspace</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{projectToDelete?.name}"? This action cannot be undone and will delete all associated papers, summaries, and data.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteWorkspace}
+                            disabled={deleteProject.isPending}
+                        >
+                            {deleteProject.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Delete
                         </Button>
                     </DialogFooter>
                 </DialogContent>

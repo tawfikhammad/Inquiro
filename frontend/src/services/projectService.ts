@@ -12,15 +12,20 @@ export const projectService = {
      */
     async getAll(): Promise<Project[]> {
         const response = await apiClient.get<any>(API_ENDPOINTS.projects);
-        // Handle both array response and object with projects array
+        console.log('Projects API response:', response);
+        console.log('Is array?', Array.isArray(response));
+        console.log('Has projects property?', response && 'projects' in response);
+
+        // Backend returns an array directly when there are projects
         if (Array.isArray(response)) {
             return response;
         }
-        // If response has a projects property, return it
-        if (response && response.projects) {
+        // Backend returns {message: "...", projects: []} when there are no projects
+        if (response && Array.isArray(response.projects)) {
             return response.projects;
         }
         // Return empty array as fallback
+        console.warn('Unexpected projects response format:', response);
         return [];
     },
 
