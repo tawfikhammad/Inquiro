@@ -143,16 +143,6 @@ export default function Dashboard() {
                                                 <span className="font-semibold text-accent">{assets.summaries}</span>
                                             </div>
                                         </div>
-                                        {/* Delete button in bottom right corner */}
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="absolute bottom-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-                                            onClick={(e) => handleDeleteWorkspace(e, project._id, project.project_title)}
-                                            disabled={deleteProject.isPending}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
                                     </CardContent>
                                 </Card>
                             );

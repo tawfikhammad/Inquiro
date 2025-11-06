@@ -36,14 +36,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { BookOpen, Upload, FileText, MessageSquare, Search, Sparkles, MoreVertical, ArrowLeft, Loader2, Trash2, Download, FileType, Languages, Lightbulb } from "lucide-react";
+import { BookOpen, Upload, FileText, MessageSquare, Search, Sparkles, MoreVertical, ArrowLeft, Loader2, Trash2, Download, FileType, Languages, Lightbulb, ChevronDown, Edit } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { usePapers, useUploadPaper, useDeletePaper } from "@/hooks/usePapers";
+import { usePapers, useUploadPaper, useDeletePaper, useRenamePaper } from "@/hooks/usePapers";
 import { useSummaries, useGenerateSummary, useDeleteSummary } from "@/hooks/useSummaries";
 import { useChat } from "@/hooks/useChat";
 import { useProject } from "@/hooks/useProjects";
-import { translatorService, explainerService } from "@/services";
+import { translatorService, explainerService, paperService } from "@/services";
 import type { Paper, Summary } from "@/types/api";
 
 const Workspace = () => {
@@ -59,6 +59,7 @@ const Workspace = () => {
     const { data: summaries, isLoading: loadingSummaries } = useSummaries(workspaceId || "");
     const uploadPaper = useUploadPaper(workspaceId || "");
     const deletePaper = useDeletePaper(workspaceId || "");
+    const renamePaper = useRenamePaper(workspaceId || "");
 
     // Chat functionality
     const { messages, sendMessage, isLoading: chatLoading } = useChat(workspaceId || "");
@@ -71,6 +72,15 @@ const Workspace = () => {
     const [summaryToDelete, setSummaryToDelete] = useState<Summary | null>(null);
     const [isGenerateSummaryDialogOpen, setIsGenerateSummaryDialogOpen] = useState(false);
     const [summaryName, setSummaryName] = useState("");
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+    const [isLoadingPdf, setIsLoadingPdf] = useState(false);
+    const [isRenamePaperDialogOpen, setIsRenamePaperDialogOpen] = useState(false);
+    const [paperToRename, setPaperToRename] = useState<Paper | null>(null);
+    const [newPaperName, setNewPaperName] = useState("");
+
+    // Toggle states for collapsible sections
+    const [isPapersExpanded, setIsPapersExpanded] = useState(true);
+    const [isSummariesExpanded, setIsSummariesExpanded] = useState(true);
 
     // Text selection context menu state
     const [selectedText, setSelectedText] = useState("");
@@ -85,6 +95,115 @@ const Workspace = () => {
 
     const generateSummary = useGenerateSummary(workspaceId || "", selectedPaper?._id || "");
     const deleteSummary = useDeleteSummary(workspaceId || "", selectedPaper?._id || "");
+
+    // Load PDF when paper is selected
+    const loadPdf = async (paper: Paper) => {
+        if (!workspaceId) return;
+
+        setIsLoadingPdf(true);
+        try {
+            const blob = await paperService.view(workspaceId, paper._id);
+            const url = URL.createObjectURL(blob);
+
+            // Revoke previous URL to prevent memory leaks
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
+            }
+
+            setPdfUrl(url);
+        } catch (error) {
+            toast({
+                title: "Error",
+                description: "Failed to load PDF. Please try again.",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoadingPdf(false);
+        }
+    };
+
+    // Handle paper selection
+    const handleSelectPaper = (paper: Paper) => {
+        setSelectedPaper(paper);
+        setSelectedItem({ type: 'paper', id: paper._id, name: paper.paper_name });
+        loadPdf(paper);
+    };
+
+    // Handle paper download
+    const handleDownloadPaper = async (paper: Paper) => {
+        if (!workspaceId) return;
+
+        try {
+            const blob = await paperService.view(workspaceId, paper._id);
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${paper.paper_name}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast({
+                title: "Success",
+                description: "Paper downloaded successfully!",
+            });
+        } catch (error) {
+            toast({
+                title: "Download failed",
+                description: error instanceof Error ? error.message : "Failed to download paper.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    // Handle rename paper dialog open
+    const handleOpenRenamePaperDialog = (paper: Paper) => {
+        setPaperToRename(paper);
+        setNewPaperName(paper.paper_name);
+        setIsRenamePaperDialogOpen(true);
+    };
+
+    // Handle paper rename
+    const handleRenamePaper = async () => {
+        if (!paperToRename) return;
+
+        if (!newPaperName.trim()) {
+            toast({
+                title: "Error",
+                description: "Paper name is required.",
+                variant: "destructive",
+            });
+            return;
+        }
+
+        try {
+            await renamePaper.mutateAsync({
+                paperId: paperToRename._id,
+                newName: newPaperName
+            });
+
+            // Update selected paper if it was renamed
+            if (selectedPaper?._id === paperToRename._id) {
+                setSelectedPaper({ ...selectedPaper, paper_name: newPaperName });
+                setSelectedItem({ type: 'paper', id: selectedPaper._id, name: newPaperName });
+            }
+
+            toast({
+                title: "Success",
+                description: "Paper renamed successfully!",
+            });
+            setIsRenamePaperDialogOpen(false);
+            setPaperToRename(null);
+            setNewPaperName("");
+        } catch (error) {
+            toast({
+                title: "Rename failed",
+                description: error instanceof Error ? error.message : "Failed to rename paper.",
+                variant: "destructive",
+            });
+        }
+    };
 
     const handleSendMessage = () => {
         if (!inputMessage.trim()) return;
@@ -325,10 +444,18 @@ const Workspace = () => {
     // Set first paper as selected when papers load
     useEffect(() => {
         if (papers && papers.length > 0 && !selectedPaper) {
-            setSelectedPaper(papers[0]);
-            setSelectedItem({ type: 'paper', id: papers[0]._id, name: papers[0].paper_name });
+            handleSelectPaper(papers[0]);
         }
     }, [papers]);
+
+    // Cleanup PDF URL on unmount
+    useEffect(() => {
+        return () => {
+            if (pdfUrl) {
+                URL.revokeObjectURL(pdfUrl);
+            }
+        };
+    }, [pdfUrl]);
 
     return (
         <div className="min-h-screen bg-background flex flex-col">
@@ -429,19 +556,13 @@ const Workspace = () => {
                                                         <div className="flex items-start gap-2">
                                                             <div
                                                                 className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0"
-                                                                onClick={() => {
-                                                                    setSelectedPaper(paper);
-                                                                    setSelectedItem({ type: 'paper', id: paper._id, name: paper.paper_name });
-                                                                }}
+                                                                onClick={() => handleSelectPaper(paper)}
                                                             >
                                                                 <FileText className="w-4 h-4 text-red-600 dark:text-red-400" />
                                                             </div>
                                                             <div
                                                                 className="flex-1 min-w-0"
-                                                                onClick={() => {
-                                                                    setSelectedPaper(paper);
-                                                                    setSelectedItem({ type: 'paper', id: paper._id, name: paper.paper_name });
-                                                                }}
+                                                                onClick={() => handleSelectPaper(paper)}
                                                             >
                                                                 <h4 className="font-medium text-xs truncate">{paper.paper_name}</h4>
                                                                 <span className="text-[10px] text-muted-foreground">
@@ -460,16 +581,13 @@ const Workspace = () => {
                                                                     </Button>
                                                                 </DropdownMenuTrigger>
                                                                 <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => {
-                                                                        setSelectedPaper(paper);
-                                                                        setSelectedItem({ type: 'paper', id: paper._id, name: paper.paper_name });
-                                                                    }}>
-                                                                        <FileText className="w-4 h-4 mr-2" />
-                                                                        View Paper
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleDownloadPaper(paper)}>
                                                                         <Download className="w-4 h-4 mr-2" />
                                                                         Download
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={() => handleOpenRenamePaperDialog(paper)}>
+                                                                        <Edit className="w-4 h-4 mr-2" />
+                                                                        Rename
                                                                     </DropdownMenuItem>
                                                                     <DropdownMenuSeparator />
                                                                     <DropdownMenuItem
@@ -609,24 +727,39 @@ const Workspace = () => {
 
                             <ScrollArea className="flex-1 p-6">
                                 {selectedItem.type === 'paper' ? (
-                                    <div
-                                        className="rounded-lg bg-muted border border-border p-8"
-                                        onMouseUp={handleTextSelection}
-                                    >
-                                        <div className="text-center text-muted-foreground">
-                                            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                                                <FileText className="w-10 h-10 text-primary" />
-                                            </div>
-                                            <h3 className="font-semibold text-lg mb-2">PDF Viewer</h3>
-                                            <p className="text-sm mb-2 font-medium text-foreground">📄 {selectedItem.name}</p>
-                                            {selectedPaper && (
-                                                <p className="text-xs mb-4">
-                                                    Size: {(selectedPaper.paper_size / 1024 / 1024).toFixed(2)} MB •
-                                                    Uploaded: {selectedPaper.created_at ? new Date(selectedPaper.created_at).toLocaleDateString() : 'recently'}
-                                                </p>
-                                            )}
+                                    isLoadingPdf ? (
+                                        <div className="flex items-center justify-center h-full">
+                                            <Loader2 className="w-12 h-12 animate-spin text-primary" />
                                         </div>
-                                    </div>
+                                    ) : pdfUrl ? (
+                                        <div className="h-full w-full">
+                                            <iframe
+                                                src={pdfUrl}
+                                                className="w-full h-full rounded-lg border border-border"
+                                                title={selectedItem.name}
+                                                style={{ minHeight: '600px' }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="rounded-lg bg-muted border border-border p-8"
+                                            onMouseUp={handleTextSelection}
+                                        >
+                                            <div className="text-center text-muted-foreground">
+                                                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                                    <FileText className="w-10 h-10 text-primary" />
+                                                </div>
+                                                <h3 className="font-semibold text-lg mb-2">PDF Viewer</h3>
+                                                <p className="text-sm mb-2 font-medium text-foreground">📄 {selectedItem.name}</p>
+                                                {selectedPaper && (
+                                                    <p className="text-xs mb-4">
+                                                        Size: {(selectedPaper.paper_size / 1024 / 1024).toFixed(2)} MB •
+                                                        Uploaded: {selectedPaper.created_at ? new Date(selectedPaper.created_at).toLocaleDateString() : 'recently'}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
                                 ) : (
                                     <div
                                         className="rounded-lg bg-muted border border-border p-8"
@@ -805,6 +938,48 @@ const Workspace = () => {
                                 <>
                                     <Sparkles className="w-4 h-4 mr-2" />
                                     Generate
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Rename Paper Dialog */}
+            <Dialog open={isRenamePaperDialogOpen} onOpenChange={setIsRenamePaperDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Rename Paper</DialogTitle>
+                        <DialogDescription>
+                            Enter a new name for this paper.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="paper-name">Paper Name *</Label>
+                            <Input
+                                id="paper-name"
+                                placeholder="e.g., Research Paper, Article"
+                                value={newPaperName}
+                                onChange={(e) => setNewPaperName(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && !renamePaper.isPending && handleRenamePaper()}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsRenamePaperDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleRenamePaper} disabled={renamePaper.isPending || !newPaperName.trim()}>
+                            {renamePaper.isPending ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Renaming...
+                                </>
+                            ) : (
+                                <>
+                                    <Edit className="w-4 h-4 mr-2" />
+                                    Rename
                                 </>
                             )}
                         </Button>
