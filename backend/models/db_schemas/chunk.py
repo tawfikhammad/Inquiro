@@ -13,6 +13,9 @@ class Chunk(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str
+        }
 
     @classmethod
     def get_indexes(cls):
